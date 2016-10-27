@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 
 #define RINGBUFFER_SIZE 1024
 #define READ_SIZE 256
@@ -15,7 +16,7 @@ uint8_t output[OUTPUT_SIZE];
 int output_pos = 0;
 
 #define SAMPLES_PER_SYMBOL 10
-#define VOLUME_RB_SIZE SAMPLES_PER_SYMBOL * 10
+#define VOLUME_RB_SIZE 10
 
 short volume_rb[VOLUME_RB_SIZE];
 int volume_rb_pos = 0;
@@ -26,7 +27,7 @@ unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
 
 void calibrate_audio() {
     int i;
-    min = 0, max = 0;
+    min = SHRT_MAX, max = SHRT_MIN;
 
     for (i = 0; i < VOLUME_RB_SIZE; i++) {
         if (volume_rb[i] < min) min = volume_rb[i];
@@ -65,7 +66,6 @@ void main() {
             for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
                 short value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
                 sum += value;
-                volume_rb[volume_rb_pos + i] = value;
                 //fprintf(stderr, "value: %i, last_value: %i : ", value, last_value);
                 /*
                 if (last_value > centre ^ value > centre) {
@@ -100,12 +100,14 @@ void main() {
                 memset(zcd, 0, sizeof(zcd));
             }
             */
-            volume_rb_pos += SAMPLES_PER_SYMBOL;
+
+            short average = sum / SAMPLES_PER_SYMBOL;
+            volume_rb[volume_rb_pos] = average;
+
+            volume_rb_pos += 1;
             if (volume_rb_pos >= VOLUME_RB_SIZE) volume_rb_pos = 0;
 
             calibrate_audio();
-
-            float average = ((float) sum) / SAMPLES_PER_SYMBOL;
 
             if (average > centre) {
                 if (average > umid) {
