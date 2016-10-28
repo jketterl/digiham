@@ -48,8 +48,8 @@ int ringbuffer_bytes() {
 
 void main() {
     int r = 0;
-    //int zcd[SAMPLES_PER_SYMBOL] = {0};
-    //int zcd_counter = 0;
+    int zcd[SAMPLES_PER_SYMBOL] = {0};
+    int zcd_counter = 0;
     short last_value = 0;
     while ((r = fread(buf, 2, READ_SIZE, stdin)) > 0) {
 
@@ -66,16 +66,12 @@ void main() {
             for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
                 short value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
                 sum += value;
-                //fprintf(stderr, "value: %i, last_value: %i : ", value, last_value);
-                /*
                 if (last_value > centre ^ value > centre) {
                     zcd[i]++;
                 }
                 last_value = value;
-                */
             }
             ringbuffer_read_pos = mod(ringbuffer_read_pos + SAMPLES_PER_SYMBOL, RINGBUFFER_SIZE);
-            /*
             zcd_counter ++;
             if (zcd_counter % 100 == 0) {
                 int total_crossings = 0, low = 0, high = 0;
@@ -88,18 +84,17 @@ void main() {
                     }
                 }
                 if (total_crossings > 0) {
-                    //fprintf(stderr, "zcd report: ");
-                    //for (i = 0; i < SAMPLES_PER_SYMBOL; i++) fprintf(stderr, "%3i ", zcd[i]);
+                    // fprintf(stderr, "zcd report: ");
+                    // for (i = 0; i < SAMPLES_PER_SYMBOL; i++) fprintf(stderr, "%3i ", zcd[i]);
                     double indication = ((double) high - low) / total_crossings;
-                    //if (fabs(indication) > .3) fprintf(stderr, "indication: %s (%.2f%%)", indication >= 0 ? "positive" : "negative", indication * 100);
+                    // if (fabs(indication) > .3) fprintf(stderr, "indication: %s (%.2f%%)", indication >= 0 ? "positive" : "negative", indication * 100);
 
-                    //if (indication > .3d) ringbuffer_read_pos = mod(ringbuffer_read_pos + 1, RINGBUFFER_SIZE);
-                    //if (indication < -.3d) ringbuffer_read_pos = mod(ringbuffer_read_pos - 1, RINGBUFFER_SIZE);
-                    //fprintf(stderr, "\n");
+                    if (indication > .3d) ringbuffer_read_pos = mod(ringbuffer_read_pos + 1, RINGBUFFER_SIZE);
+                    if (indication < -.3d) ringbuffer_read_pos = mod(ringbuffer_read_pos - 1, RINGBUFFER_SIZE);
+                    // fprintf(stderr, "\n");
                 }
                 memset(zcd, 0, sizeof(zcd));
             }
-            */
 
             short average = sum / SAMPLES_PER_SYMBOL;
             volume_rb[volume_rb_pos] = average;
