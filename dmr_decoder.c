@@ -93,8 +93,11 @@ void main() {
                 break;
             }
 
-            uint8_t slot = ringbuffer[(ringbuffer_read_pos + 24 + 60) % RINGBUFFER_SIZE];
-            fprintf(stderr, "  slot: %i busy: %i\n", (slot & 2) > 1, slot & 1);
+            // CACH Interleaving
+            // todo hamming
+            uint8_t at = ringbuffer[(ringbuffer_read_pos + 24 + 54) % RINGBUFFER_SIZE];
+            uint8_t tc = ringbuffer[(ringbuffer_read_pos + 24 + 54 + 2) % RINGBUFFER_SIZE];
+            fprintf(stderr, "  slot: %i busy: %i\n", (tc & 2) >> 1, (at & 2) >> 1);
 
             ringbuffer_read_pos = mod(ringbuffer_read_pos + 144, RINGBUFFER_SIZE);
         }
