@@ -87,17 +87,38 @@ void main() {
                 sync_missing ++;
             }
 
-            if (sync_missing >= 6) {
+            if (sync_missing >= 12) {
                 fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                 sync = false;
                 break;
             }
 
+            uint8_t tact = 0;
             // CACH Interleaving
-            // todo hamming
-            uint8_t at = ringbuffer[(ringbuffer_read_pos + 24 + 54) % RINGBUFFER_SIZE];
-            uint8_t tc = ringbuffer[(ringbuffer_read_pos + 24 + 54 + 2) % RINGBUFFER_SIZE];
-            fprintf(stderr, "  slot: %i busy: %i\n", (tc & 2) >> 1, (at & 2) >> 1);
+            for (k = 0; k < 7; k++) {
+                int pos = k * 2;
+                if (pos > 8) pos--;
+                tact = (tact << 1) | ((ringbuffer[(ringbuffer_read_pos + 24 + 54 + pos) % RINGBUFFER_SIZE] & 2) >> 1);
+            }
+
+            // HAMMING checksum
+            uint8_t hamming_matrix[] = { 7, 14, 11 };
+            uint8_t checksum = 0;
+            for (k = 0; k < 3; k++) {
+                uint8_t masked = (tact >> 3) & hamming_matrix[k];
+                checksum ^= masked;
+            }
+
+            uint8_t syndrome = (tact & 7) ^ checksum;
+            tact ^= syndrome;
+
+            /*
+            if (syndrome > 0) {
+                fprintf(stderr, "TACT bit error corrected");
+            }
+            */
+
+            fprintf(stderr, "  slot: %i busy: %i, lcss: %i\n", (tact & 32) >> 5, (tact & 64) >> 6, (tact & 24) >> 3);
 
             ringbuffer_read_pos = mod(ringbuffer_read_pos + 144, RINGBUFFER_SIZE);
         }
