@@ -15,6 +15,7 @@ add_executable(rrc_filter rrc_filter.c)
 add_executable(gfsk_demodulator gfsk_demodulator.c)
 add_executable(dmr_decoder dmr_decoder.c)
 add_executable(mbe_synthesizer mbe_synthesizer.c)
+TARGET_LINK_LIBRARIES(mbe_synthesizer ${LIBS})
 
 install(TARGETS rrc_filter DESTINATION bin)
 install(TARGETS gfsk_demodulator DESTINATION bin)

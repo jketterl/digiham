@@ -111,8 +111,6 @@ void main() {
     int r = 0;
     bool sync = false;
     int sync_missing = 0;
-    FILE *fp = fopen("/tmp/payload.data", "w");
-    fputs(".amb", fp);
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
@@ -149,7 +147,7 @@ void main() {
             if (synctype != SYNCTYPE_UNKNOWN) {
                 sync_missing = 0;
             } else {
-                fprintf(stderr, "going to %i without sync\n", ringbuffer_read_pos);
+                //fprintf(stderr, "going to %i without sync\n", ringbuffer_read_pos);
                 sync_missing ++;
             }
 
@@ -191,7 +189,7 @@ void main() {
 
             if (synctype != SYNCTYPE_UNKNOWN) synctypes[slot] = synctype;
 
-            fprintf(stderr, "  slot: %i busy: %i, lcss: %i\n", slot, (tact & 64) >> 6, (tact & 24) >> 3);
+            fprintf(stderr, "  slot: %i busy: %i, lcss: %i\r", slot, (tact & 64) >> 6, (tact & 24) >> 3);
 
             // extract payload data
             uint8_t payload[27] = {0};
@@ -212,8 +210,8 @@ void main() {
                 uint8_t deinterleaved[36];
                 deinterleave_voice_payload(payload, deinterleaved);
                 //DumpHex(&deinterleaved, 36);
-                fwrite(deinterleaved, 1, 36, fp);
-                fflush(fp);
+                fwrite(deinterleaved, 1, 36, stdout);
+                fflush(stdout);
             }
 
             // advance to the next frame. as long as we have sync, we know where the next frame begins
