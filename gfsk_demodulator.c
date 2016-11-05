@@ -16,7 +16,7 @@ uint8_t output[OUTPUT_SIZE];
 int output_pos = 0;
 
 #define SAMPLES_PER_SYMBOL 10
-#define VOLUME_RB_SIZE 10
+#define VOLUME_RB_SIZE 100
 
 short volume_rb[VOLUME_RB_SIZE];
 int volume_rb_pos = 0;
@@ -127,6 +127,7 @@ void main() {
         //fprintf(stderr, "\n");
 
         fwrite(output, 1, output_pos, stdout);
+        fflush(stdout);
     }
 }
 
