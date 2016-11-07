@@ -21,7 +21,6 @@ void main() {
     char err_str[64];
     char ambe_d[49];
     while ((r = fread(buf, 1, FRAMESIZE, stdin)) > 0) {
-        fprintf(stderr, "read %i bytes ", r);
         char ambe_d[49];
 
         /*
