@@ -163,9 +163,23 @@ void main() {
             int cach_start = ringbuffer_read_pos - (54 + 12);
             // extract TACT bits from CACH
             for (k = 0; k < 7; k++) {
-                int pos = k * 2;
-                if (pos > 8) pos--;
-                tact = (tact << 1) | ((ringbuffer[(cach_start + pos) % RINGBUFFER_SIZE] & 2) >> 1);
+                uint8_t bit = tact_positions[k];
+                int pos = bit / 2;
+                int shift = 1 - (bit % 2);
+
+                tact = (tact << 1) | ((ringbuffer[(cach_start + pos) % RINGBUFFER_SIZE]) >> shift) & 1;
+            }
+
+            uint8_t cach_payload[3] = {0};
+            for (k = 0; k < 17; k++) {
+                uint8_t bit = cach_payload_positions[k];
+                int pos = bit / 2;
+                int shift = 1 - (bit % 2);
+
+                int payload_pos = k / 8;
+                int payload_shift = k % 8;
+
+                cach_payload[payload_pos] |= ((ringbuffer[(cach_start + pos) % RINGBUFFER_SIZE] >> shift) & 1) << payload_shift;
             }
 
             // HAMMING checksum
@@ -179,17 +193,13 @@ void main() {
             uint8_t syndrome = (tact & 7) ^ checksum;
             tact ^= syndrome;
 
-            /*
-            if (syndrome > 0) {
-                fprintf(stderr, "TACT bit error corrected");
-            }
-            */
-
             uint8_t slot = (tact & 32) >> 5;
+            uint8_t busy = (tact & 64) >> 6;
+            uint8_t lcss = (tact & 24) >> 3;
 
             if (synctype != SYNCTYPE_UNKNOWN) synctypes[slot] = synctype;
 
-            fprintf(stderr, "  slot: %i busy: %i, lcss: %i\r", slot, (tact & 64) >> 6, (tact & 24) >> 3);
+            fprintf(stderr, "  slot: %i busy: %i, lcss: %i\n", slot, busy, lcss);
 
             // extract payload data
             uint8_t payload[27] = {0};
