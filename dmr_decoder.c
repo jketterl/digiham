@@ -107,6 +107,58 @@ void deinterleave_voice_payload(uint8_t payload[27], uint8_t result[36]) {
     }
 }
 
+#define LCSS_SINGLE 0
+#define LCSS_START 1
+#define LCSS_STOP 2
+#define LCSS_CONTINUATION 3
+
+uint8_t lcss_backlog[12];
+uint8_t lcss_position = 0;
+
+void reset_cach_payload() {
+    lcss_position = 0;
+    memset(lcss_backlog, 0, 12);
+}
+
+void copy_lcss_bits(uint8_t payload[3], uint8_t offset) {
+    int i;
+    for (i = 0; i < 17; i++) {
+        int input_pos = i / 8;
+        int input_shift = 7 - i % 8;
+
+        int output_bit = offset * 17 + i;
+        int output_pos = output_bit / 8;
+        int output_shift = 7 - output_bit % 8;
+
+        lcss_backlog[output_pos] |= ((payload[input_pos] >> input_shift) & 1) << output_shift;
+    }
+}
+
+void decode_lcss_bits(uint8_t bits[], uint8_t count) {
+    // TODO BPTC FEC
+}
+
+void collect_cach_payload(uint8_t payload[3], uint8_t lcss) {
+    switch (lcss) {
+        case LCSS_SINGLE:
+            decode_lcss_bits(payload, 17);
+            break;
+
+        case LCSS_START:
+            reset_cach_payload;
+            // break intentionally omitted
+
+        case LCSS_CONTINUATION:
+            copy_lcss_bits(payload, lcss_position++);
+            break;
+
+        case LCSS_STOP:
+            copy_lcss_bits(payload, lcss_position++);
+            decode_lcss_bits(lcss_backlog, lcss_position * 17);
+            reset_cach_payload();
+    }
+}
+
 void main() {
     int r = 0;
     bool sync = false;
@@ -144,17 +196,55 @@ void main() {
             for (k = 0; k < SYNC_SIZE; k++) potential_sync[k] = ringbuffer[(ringbuffer_read_pos + k) % RINGBUFFER_SIZE];
 
             int synctype = get_synctype(potential_sync);
+            bool emb_present = false;
+            uint8_t emb_data = 0;
             if (synctype != SYNCTYPE_UNKNOWN) {
                 sync_missing = 0;
             } else {
                 //fprintf(stderr, "going to %i without sync\n", ringbuffer_read_pos);
-                sync_missing ++;
+                short emb = 0;
+
+                // try to decode as embedded signalling
+                for (k = 0; k < 4; k++) {
+                    emb = (emb << 2) | ringbuffer[(ringbuffer_read_pos + k) % RINGBUFFER_SIZE];
+                }
+                for (k = 0; k < 4; k++) {
+                    emb = (emb << 2) | ringbuffer[(ringbuffer_read_pos + 20 + k) % RINGBUFFER_SIZE];
+                }
+
+                // check emb header
+                short parity = 0;
+                uint8_t data = (emb & 0xFE00) >> 9;
+                for (k = 0; k < 9; k++) {
+                    int bit = 0, l;
+                    for (l = 0; l < 7; l++) {
+                        if ((emb_qr_matrix[k] >> l) & 1) {
+                            bit ^= ((data >> l) & 1);
+                        }
+                    }
+              
+                    parity = (parity << 1) | (bit & 1);
+                }
+
+                short parity_input = emb & 0x01FF;
+                if (parity == parity_input) {
+                    // if the EMB decoded correctly, that counts towards the sync :)
+                    sync_missing = 0;
+                    emb_present = true;
+                    emb_data = data;
+                } else {
+                    sync_missing ++;
+                    emb_present = false;
+                }
+
+
             }
 
             if (sync_missing >= 12) {
                 fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                 sync = false;
                 synctypes[0] = SYNCTYPE_UNKNOWN; synctypes[1] = SYNCTYPE_UNKNOWN;
+                reset_cach_payload();
                 break;
             }
 
@@ -183,6 +273,7 @@ void main() {
             }
 
             // HAMMING checksum
+            // guessing from the results, this is probably wrong...
             uint8_t hamming_matrix[] = { 7, 14, 11 };
             uint8_t checksum = 0;
             for (k = 0; k < 3; k++) {
@@ -199,7 +290,17 @@ void main() {
 
             if (synctype != SYNCTYPE_UNKNOWN) synctypes[slot] = synctype;
 
-            fprintf(stderr, "  slot: %i busy: %i, lcss: %i\n", slot, busy, lcss);
+            fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
+
+            if (synctypes[slot] == SYNCTYPE_VOICE && emb_present) {
+                uint8_t cc = (emb_data & 0b01111000) >> 3;
+                uint8_t lcss = emb_data & 0b00000011;
+                fprintf(stderr, " // EMB: CC: %i, LCSS: %i ", cc, lcss); 
+            }
+
+            fprintf(stderr, "\n");
+            
+            collect_cach_payload(cach_payload, lcss);
 
             // extract payload data
             uint8_t payload[27] = {0};
