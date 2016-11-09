@@ -46,9 +46,9 @@ void main() {
                 ambe_fr[i][k] = (buf[position] >> shift) & 1;
             }
         }
-        mbe_processAmbe3600x2450Frame(output, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, 3);
+        mbe_processAmbe3600x2450Frame(output, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, 1);
 
-        fprintf(stderr, "mbe: %s\n", err_str);
+        fprintf(stderr, "%s", err_str);
 
         fwrite(output, 2, 160, stdout);
         fflush(stdout);
