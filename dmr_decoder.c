@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <getopt.h>
 #include "dmr_bitmappings.h"
 
 #define BUF_SIZE 128
@@ -26,6 +27,14 @@ uint8_t dmr_bs_voice_sync[] = { 1,3,1,1,1,1,3,3,3,1,1,3,3,1,3,3,1,3,1,1,3,3,1,3 
 uint8_t dmr_ms_data_sync[] =  { 3,1,1,1,3,1,1,3,3,3,1,3,1,3,3,3,3,1,1,3,1,1,1,3 };
 uint8_t dmr_ms_voice_sync[] = { 1,3,3,3,1,3,3,1,1,1,3,1,3,1,1,1,1,3,3,1,3,3,3,1 };
 
+
+FILE *meta_fifo = NULL;
+
+void meta_write(char* metadata) {
+    if (meta_fifo == NULL) return;
+    fwrite(metadata, 1, strlen(metadata), meta_fifo);
+    fflush(meta_fifo);
+}
 
 void DumpHex(const void* data, size_t size) {
     char ascii[17];
@@ -206,12 +215,17 @@ void decode_embedded_data(slot) {
     source_id =  (decode_matrix[4] & 0b0000001111000000) << 14;
     source_id |= (decode_matrix[5] & 0b1111111111000000) << 4;
     source_id |= (decode_matrix[6] & 0b1111111111000000) >> 6;
+    char metadata[255];
     switch (flc_opcode) {
         case FLC_OPCODE_GROUP:
             fprintf(stderr, " group voice; group: %i, source: %i ", target_id, source_id);
+            sprintf(metadata, "protocol:DMR;slot:%i;type:group;source:%i;target:%i\n", slot, source_id, target_id);
+            meta_write(&metadata[0]);
             break;
         case FLC_OPCODE_UNIT_TO_UNIT:
             fprintf(stderr, " direct voice; target: %i, source: %i ", target_id, source_id);
+            sprintf(metadata, "protocol:DMR;slot:%i;type:direct;source:%i;target:%i\n", slot, source_id, target_id);
+            meta_write(&metadata[0]);
             break;
         default:
             fprintf(stderr, " unknown flc opcode: %i ", flc_opcode);
@@ -242,7 +256,21 @@ void collect_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t lcss
     }
 }
 
-void main() {
+void main(int argc, char** argv) {
+    int c;
+    static struct option long_options[] = {
+        {"fifo", required_argument, NULL, 'f'},
+        { NULL, 0, NULL, 0 }
+    };
+    while ((c = getopt_long(argc, argv, "f:", long_options, NULL)) != -1) {
+        switch (c) {
+            case 'f':
+                fprintf(stderr, "meta fifo: %s\n", optarg);
+                meta_fifo = fopen(optarg, "w");
+                break;
+        }
+    }
+
     int r = 0;
     bool sync = false;
     int sync_missing = 0;
