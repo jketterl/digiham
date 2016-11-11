@@ -66,19 +66,19 @@ int ringbuffer_bytes() {
 
 int get_synctype(uint8_t potential_sync[24]) {
     if (memcmp(potential_sync, dmr_bs_data_sync, SYNC_SIZE) == 0) {
-        fprintf(stderr, "found a bs data sync at pos %i\n", ringbuffer_read_pos);
+        //fprintf(stderr, "found a bs data sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_DATA;
     }
     if (memcmp(potential_sync, dmr_bs_voice_sync, SYNC_SIZE) == 0) {
-        fprintf(stderr, "found a bs voice sync at pos %i\n", ringbuffer_read_pos);
+        //fprintf(stderr, "found a bs voice sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_VOICE;
     }
     if (memcmp(potential_sync, dmr_ms_data_sync, SYNC_SIZE) == 0) {
-        fprintf(stderr, "found a ms data sync at pos %i\n", ringbuffer_read_pos);
+        //fprintf(stderr, "found a ms data sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_DATA;
     }
     if (memcmp(potential_sync, dmr_ms_voice_sync, SYNC_SIZE) == 0) {
-        fprintf(stderr, "found a ms voice sync at pos %i\n", ringbuffer_read_pos);
+        //fprintf(stderr, "found a ms voice sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_VOICE;
     }
     return SYNCTYPE_UNKNOWN;
@@ -145,7 +145,7 @@ void collect_cach_payload(uint8_t payload[3], uint8_t lcss) {
             break;
 
         case LCSS_START:
-            reset_cach_payload;
+            reset_cach_payload();
             // break intentionally omitted
 
         case LCSS_CONTINUATION:
@@ -156,6 +156,89 @@ void collect_cach_payload(uint8_t payload[3], uint8_t lcss) {
             copy_lcss_bits(payload, lcss_position++);
             decode_lcss_bits(lcss_backlog, lcss_position * 17);
             reset_cach_payload();
+    }
+}
+
+uint8_t embedded_backlog[2][16];
+uint8_t embedded_position[2] = {0};
+
+void reset_embedded_data(uint8_t slot) {
+    embedded_position[slot] = 0;
+    memset(embedded_backlog[slot], 0, 16);
+}
+
+void copy_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t position) {
+    if (position > 3) {
+        fprintf(stderr, "embedded data backlog overflow; ignoring frame data\n");
+        return;
+    }
+    int i = 0;
+    for (i = 0; i < 16; i++) {
+        int pos = i / 4;
+        int shift = 6 - (i % 4) * 2;
+        embedded_backlog[slot][position * 4 + pos] |= embedded_data[i] << shift;
+    }
+}
+
+#define FLC_OPCODE_GROUP 0
+#define FLC_OPCODE_UNIT_TO_UNIT 3
+
+void decode_embedded_data(slot) {
+    fprintf(stderr, "decoding embedded data for slot %i", slot);
+    int i, k;
+    uint16_t decode_matrix[8];
+    for (i = 0; i < 16; i++) {
+        uint8_t byte = embedded_backlog[slot][i];
+        for (k = 0; k < 8; k++) {
+            decode_matrix[k] = (decode_matrix[k] << 1) | ((byte >> (7 - k)) & 1);
+        }
+    }
+
+    // TODO flc BPTC
+
+    uint8_t flc_opcode = (decode_matrix[0] & 0x3F00) >> 8;
+    uint32_t target_id = 0;
+    uint32_t source_id = 0;
+    // bits are spread across the matrix rather strangely; see B.2.1
+    target_id =  (decode_matrix[2] & 0b0011111111000000) << 10;
+    target_id |= (decode_matrix[3] & 0b1111111111000000);
+    target_id |= (decode_matrix[4] & 0b1111110000000000) >> 10;
+    source_id =  (decode_matrix[4] & 0b0000001111000000) << 14;
+    source_id |= (decode_matrix[5] & 0b1111111111000000) << 4;
+    source_id |= (decode_matrix[6] & 0b1111111111000000) >> 6;
+    switch (flc_opcode) {
+        case FLC_OPCODE_GROUP:
+            fprintf(stderr, " group voice; group: %i, source: %i ", target_id, source_id);
+            break;
+        case FLC_OPCODE_UNIT_TO_UNIT:
+            fprintf(stderr, " direct voice; target: %i, source: %i ", target_id, source_id);
+            break;
+        default:
+            fprintf(stderr, " unknown flc opcode: %i ", flc_opcode);
+    }
+}
+
+void collect_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t lcss) {
+    switch (lcss) {
+        case LCSS_SINGLE:
+            // RC data. no idea what to do with that yet.
+            break;
+
+        case LCSS_START:
+            reset_embedded_data(slot);
+            // break intentionally omitted
+
+        case LCSS_CONTINUATION:
+            copy_embedded_data(embedded_data, slot, embedded_position[slot]++);
+            break;
+
+        case LCSS_STOP:
+            copy_embedded_data(embedded_data, slot, embedded_position[slot]);
+            if (embedded_position[slot] == 3) {
+                decode_embedded_data(slot);
+            }
+            reset_embedded_data(slot);
+            break;
     }
 }
 
@@ -292,13 +375,19 @@ void main() {
 
             fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
 
-            if (synctypes[slot] == SYNCTYPE_VOICE && emb_present) {
+            if (emb_present) {
                 uint8_t cc = (emb_data & 0b01111000) >> 3;
                 uint8_t lcss = emb_data & 0b00000011;
+
+                uint8_t embedded_data[16] = {0};
+                for (k = 0; k < 16; k++) {
+                    embedded_data[k] = ringbuffer[(ringbuffer_read_pos + 4 + k) % RINGBUFFER_SIZE];
+                }
                 fprintf(stderr, " // EMB: CC: %i, LCSS: %i ", cc, lcss); 
+                collect_embedded_data(embedded_data, slot, lcss);
             }
 
-            fprintf(stderr, "\n");
+            fprintf(stderr, "\r");
             
             collect_cach_payload(cach_payload, lcss);
 
@@ -317,10 +406,8 @@ void main() {
             }
 
             if (synctypes[slot] == SYNCTYPE_VOICE) {
-                //DumpHex(payload, 27);
                 uint8_t deinterleaved[36];
                 deinterleave_voice_payload(payload, deinterleaved);
-                //DumpHex(&deinterleaved, 36);
                 fwrite(deinterleaved, 1, 36, stdout);
                 fflush(stdout);
             }
