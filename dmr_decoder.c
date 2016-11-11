@@ -356,6 +356,8 @@ void main(int argc, char** argv) {
                 sync = false;
                 synctypes[0] = SYNCTYPE_UNKNOWN; synctypes[1] = SYNCTYPE_UNKNOWN;
                 reset_cach_payload();
+                reset_embedded_data(0); reset_embedded_data(0);
+                meta_write("\n");
                 break;
             }
 
@@ -399,7 +401,19 @@ void main(int argc, char** argv) {
             uint8_t busy = (tact & 64) >> 6;
             uint8_t lcss = (tact & 24) >> 3;
 
-            if (synctype != SYNCTYPE_UNKNOWN) synctypes[slot] = synctype;
+            if (synctype != SYNCTYPE_UNKNOWN && synctypes[slot] != synctype) {
+                synctypes[slot] = synctype;
+                // send synctype change over metadata fifo
+                char metadata[255] = "\n";
+                if (synctype == SYNCTYPE_VOICE) {
+                    sprintf(metadata, "protocol:DMR;slot:%i;type:voice\n", slot);
+                } else if (synctype == SYNCTYPE_DATA) {
+                    sprintf(metadata, "protocol:DMR;slot:%i;type:data\n", slot);
+                } else {
+                    sprintf(metadata, "protocol:DMR\n");
+                }
+                meta_write(&metadata[0]);
+            }
 
             fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
 
