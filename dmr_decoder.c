@@ -386,16 +386,15 @@ void main(int argc, char** argv) {
             }
 
             // HAMMING checksum
-            // guessing from the results, this is probably wrong...
-            uint8_t hamming_matrix[] = { 7, 14, 11 };
             uint8_t checksum = 0;
             for (k = 0; k < 3; k++) {
-                uint8_t masked = (tact >> 3) & hamming_matrix[k];
-                checksum ^= masked;
+                uint8_t masked = tact & tact_hamming_parity_check_matrix[k];
+                int l; bool syndrome = 0;
+                for (l = 0; l < 7; l++) syndrome ^= (masked >> l) & 1;
+                checksum = (checksum << 1) | syndrome;
             }
-
-            uint8_t syndrome = (tact & 7) ^ checksum;
-            tact ^= syndrome;
+            // correct single bit error
+            if (checksum > 0) tact ^= 1 << (tact_hamming_corrections[checksum] - 1);
 
             uint8_t slot = (tact & 32) >> 5;
             uint8_t busy = (tact & 64) >> 6;

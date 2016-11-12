@@ -1,5 +1,16 @@
 #include <stdint.h>
 
+uint8_t tact_hamming_parity_check_matrix[3] = {
+    0b1110100,
+    0b0111010,
+    0b1101001
+};
+
+// this is basically just a pivoted & sorted form of the matrix above
+uint8_t tact_hamming_corrections[] = {
+    0, 1, 2, 4, 3, 7, 5, 6
+};
+
 // there seems to be a system here, at least to some extent. but parts of it are pretty arbitrary and would result in pretty unintelligible condions, so i'll leave it as a constant here.
 uint8_t voice_mapping[72] = {
     23, 5,  34, 51,
