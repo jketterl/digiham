@@ -21,6 +21,10 @@ int output_pos = 0;
 short volume_rb[VOLUME_RB_SIZE];
 int volume_rb_pos = 0;
 
+#define VARIANCE_RB_SIZE 100 * SAMPLES_PER_SYMBOL
+short variance_rb[VARIANCE_RB_SIZE];
+int variance_rb_pos = 0;
+
 short min = 0, max = 0, centre = 0, umid = 0, lmid = 0;
 
 unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
@@ -48,9 +52,6 @@ int ringbuffer_bytes() {
 
 void main() {
     int r = 0;
-    int zcd[SAMPLES_PER_SYMBOL] = {0};
-    int zcd_counter = 0;
-    short last_value = 0;
     while ((r = fread(buf, 2, READ_SIZE, stdin)) > 0) {
 
         int i = 0;
@@ -66,34 +67,44 @@ void main() {
             for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
                 short value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
                 sum += value;
-                if (last_value > centre ^ value > centre) {
-                    zcd[i]++;
-                }
-                last_value = value;
+                variance_rb[variance_rb_pos + i] = value;
             }
             ringbuffer_read_pos = mod(ringbuffer_read_pos + SAMPLES_PER_SYMBOL, RINGBUFFER_SIZE);
-            zcd_counter ++;
-            if (zcd_counter % 100 == 0) {
-                int total_crossings = 0, low = 0, high = 0;
+
+            variance_rb_pos += SAMPLES_PER_SYMBOL;
+            if (variance_rb_pos >= VARIANCE_RB_SIZE) {
+
+                unsigned int variance_sums[SAMPLES_PER_SYMBOL] = { 0 };
+                unsigned int variance_total = 0;
+                for (i = 0; i < VARIANCE_RB_SIZE; i++) {
+                    variance_sums[i % SAMPLES_PER_SYMBOL] += abs(variance_rb[i]);
+                    variance_total += abs(variance_rb[i]);
+                }
+                //fprintf(stderr, "variances: ");
+                unsigned int vmin = -1;
+                int vmin_pos = 0;
                 for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
-                    total_crossings += zcd[i];
-                    if (i <= SAMPLES_PER_SYMBOL / 2) {
-                        high += zcd[i];
-                    } else {
-                        low += zcd[i];
+                    //fprintf(stderr, "%.1f ", 100.0f * variance_sums[i] / variance_total);
+                    if (variance_sums[i] < vmin) {
+                        vmin = variance_sums[i];
+                        vmin_pos = i;
                     }
                 }
-                if (total_crossings > 0) {
-                    // fprintf(stderr, "zcd report: ");
-                    // for (i = 0; i < SAMPLES_PER_SYMBOL; i++) fprintf(stderr, "%3i ", zcd[i]);
-                    double indication = ((double) high - low) / total_crossings;
-                    // if (fabs(indication) > .3) fprintf(stderr, "indication: %s (%.2f%%)", indication >= 0 ? "positive" : "negative", indication * 100);
-
-                    if (indication > .3d) ringbuffer_read_pos = mod(ringbuffer_read_pos + 1, RINGBUFFER_SIZE);
-                    if (indication < -.3d) ringbuffer_read_pos = mod(ringbuffer_read_pos - 1, RINGBUFFER_SIZE);
-                    // fprintf(stderr, "\n");
+                //fprintf(stderr, "\n");
+                //fprintf(stderr, "minimum variance: %.1f @ %i ", 100.0f * vmin / variance_total, vmin_pos);
+                if (vmin_pos > 0 && vmin_pos <= 4) {
+                    // variance indicates stepping to the left
+                    //fprintf(stderr, "skipping\n");
+                    ringbuffer_read_pos = mod(ringbuffer_read_pos + 1, RINGBUFFER_SIZE);
+                } else if (vmin_pos >= 5 && vmin_pos < 9) {
+                    // variance indicates stepping to the right
+                    //fprintf(stderr, "duplicating\n");
+                    ringbuffer_read_pos = mod(ringbuffer_read_pos - 1, RINGBUFFER_SIZE);
+                } else {
+                    //fprintf(stderr, "variance OK\n");
                 }
-                memset(zcd, 0, sizeof(zcd));
+
+                variance_rb_pos %= VARIANCE_RB_SIZE;
             }
 
             short average = sum / SAMPLES_PER_SYMBOL;
