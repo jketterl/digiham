@@ -21,7 +21,8 @@ int output_pos = 0;
 short volume_rb[VOLUME_RB_SIZE];
 int volume_rb_pos = 0;
 
-#define VARIANCE_RB_SIZE 100 * SAMPLES_PER_SYMBOL
+#define VARIANCE_SYMBOLS 100
+#define VARIANCE_RB_SIZE VARIANCE_SYMBOLS * SAMPLES_PER_SYMBOL
 short variance_rb[VARIANCE_RB_SIZE];
 int variance_rb_pos = 0;
 
@@ -74,25 +75,36 @@ void main() {
             variance_rb_pos += SAMPLES_PER_SYMBOL;
             if (variance_rb_pos >= VARIANCE_RB_SIZE) {
 
-                unsigned int variance_sums[SAMPLES_PER_SYMBOL] = { 0 };
-                unsigned int variance_total = 0;
-                for (i = 0; i < VARIANCE_RB_SIZE; i++) {
-                    variance_sums[i % SAMPLES_PER_SYMBOL] += abs(variance_rb[i]);
-                    variance_total += abs(variance_rb[i]);
-                }
-                //fprintf(stderr, "variances: ");
-                unsigned int vmin = -1;
-                int vmin_pos = 0;
+                double vmin;
+                int vmin_pos;
+
                 for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
-                    //fprintf(stderr, "%.1f ", 100.0f * variance_sums[i] / variance_total);
-                    if (variance_sums[i] < vmin) {
-                        vmin = variance_sums[i];
+                    //fprintf(stderr, "variance calc @ %i: ", i);
+                    int total = 0;
+                    int k;
+                    for (k = 0; k < VARIANCE_SYMBOLS; k++) {
+                        total += variance_rb[k * SAMPLES_PER_SYMBOL + i];
+                    }
+                    double mean = (float) total / VARIANCE_SYMBOLS;
+                    //fprintf(stderr, "total: %i, mean: %.0f ", total, mean);
+
+                    double sum = 0;
+                    for (k = 0; k < VARIANCE_SYMBOLS; k++) {
+                        sum += pow(mean - variance_rb[k * SAMPLES_PER_SYMBOL + i], 2);
+                    }
+                    double variance = sum / VARIANCE_SYMBOLS;
+                    //fprintf(stderr, "variance: %.0f\n", variance);
+
+                    if (i == 0 || variance < vmin) {
+                        vmin = variance;
                         vmin_pos = i;
                     }
                 }
-                //fprintf(stderr, "\n");
-                //fprintf(stderr, "minimum variance: %.1f @ %i ", 100.0f * vmin / variance_total, vmin_pos);
-                if (vmin_pos > 0 && vmin_pos <= 4) {
+
+                //fprintf(stderr, "minimum variance: %.1f @ %i ", vmin, vmin_pos);
+                if (vmin <= 0 || vmin > 5000000) {
+                    //fprintf(stderr, "no variance decision\n");
+                } else if (vmin_pos > 0 && vmin_pos <= 4) {
                     // variance indicates stepping to the left
                     //fprintf(stderr, "skipping\n");
                     ringbuffer_read_pos = mod(ringbuffer_read_pos + 1, RINGBUFFER_SIZE);
