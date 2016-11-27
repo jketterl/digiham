@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include "ysf_trellis.h"
 #include "ysf_golay.h"
+#include "ysf_fich.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -168,12 +169,14 @@ void main(int argc, char** argv) {
                 sync_missing = 0;
 
                 // re-combine final fich from golay result
-                uint32_t fich =
+                uint32_t fich_data =
                     fich_golay[0][0] << 24 | (fich_golay[0][1] & 0xf0) << 16 |
                     fich_golay[1][0] << 12 | (fich_golay[1][1] & 0xf0) << 4 |
                     fich_golay[2][0];
 
-                DumpHex(&fich, 4);
+                fich fich = decode_fich(fich_data);
+
+                fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
             } else {
                 fprintf(stderr, "golay failure: %i\n", golay_result);
             }
