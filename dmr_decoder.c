@@ -274,6 +274,7 @@ void main(int argc, char** argv) {
     int r = 0;
     bool sync = false;
     int sync_missing = 0;
+    int lastslot = -1;
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
@@ -358,6 +359,7 @@ void main(int argc, char** argv) {
                 reset_cach_payload();
                 reset_embedded_data(0); reset_embedded_data(0);
                 meta_write("\n");
+                lastslot = -1;
                 break;
             }
 
@@ -400,7 +402,10 @@ void main(int argc, char** argv) {
             uint8_t busy = (tact & 64) >> 6;
             uint8_t lcss = (tact & 24) >> 3;
 
-            if (synctype != SYNCTYPE_UNKNOWN && synctypes[slot] != synctype) {
+            // slots should always be alternating, but may be overridden by 100% correct tact
+            bool use_slot = lastslot != slot || checksum == 0;
+
+            if (use_slot && synctype != SYNCTYPE_UNKNOWN && synctypes[slot] != synctype) {
                 synctypes[slot] = synctype;
                 // send synctype change over metadata fifo
                 char metadata[255] = "\n";
@@ -412,11 +417,12 @@ void main(int argc, char** argv) {
                     sprintf(metadata, "protocol:DMR\n");
                 }
                 meta_write(&metadata[0]);
+                lastslot = slot;
             }
 
             fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
 
-            if (emb_present) {
+            if (use_slot && emb_present) {
                 uint8_t cc = (emb_data & 0b01111000) >> 3;
                 uint8_t lcss = emb_data & 0b00000011;
 
