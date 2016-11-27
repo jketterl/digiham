@@ -67,7 +67,7 @@ void main() {
             int sum = 0;
             for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
                 short value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
-                sum += value;
+                if (i > 0 && i < 9) sum += value;
                 variance_rb[variance_rb_pos + i] = value;
             }
             ringbuffer_read_pos = mod(ringbuffer_read_pos + SAMPLES_PER_SYMBOL, RINGBUFFER_SIZE);
@@ -119,7 +119,7 @@ void main() {
                 variance_rb_pos %= VARIANCE_RB_SIZE;
             }
 
-            short average = sum / SAMPLES_PER_SYMBOL;
+            short average = sum / (SAMPLES_PER_SYMBOL - 2);
             volume_rb[volume_rb_pos] = average;
 
             volume_rb_pos += 1;
