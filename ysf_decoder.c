@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
+#include "ysf_trellis.h"
+#include "ysf_golay.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -139,6 +141,41 @@ void main(int argc, char** argv) {
                 sync = false;
                 meta_write("\n");
                 break;
+            }
+
+            uint8_t fich_raw[25] = { 0 };
+            for (i = 0; i < 100; i++) {
+                int offset = SYNC_SIZE + ((i * 20) % 100 + i * 20 / 100);
+                int outpos = i / 4;
+                int outshift = 6 - 2 * (i % 4);
+                fich_raw[outpos] |= (ringbuffer[(ringbuffer_read_pos + offset) % RINGBUFFER_SIZE] & 3) << outshift;
+            }
+
+            uint8_t fich_trellis[13];
+            uint8_t result = decode_trellis(&fich_raw[0], 100, &fich_trellis[0]);
+
+            uint8_t fich_golay[4][2];
+            uint32_t golay_result = 0;
+            for (i = 0; i < 4; i++) {
+                uint32_t g = decode_golay(&fich_trellis[i * 3], &fich_golay[i][0]);
+                golay_result += g;
+            }
+
+            if (golay_result == 0) {
+                // TODO there's still a CRC16 to be implemented here...
+
+                // fich decoded without errors? accept as sync
+                sync_missing = 0;
+
+                // re-combine final fich from golay result
+                uint32_t fich =
+                    fich_golay[0][0] << 24 | (fich_golay[0][1] & 0xf0) << 16 |
+                    fich_golay[1][0] << 12 | (fich_golay[1][1] & 0xf0) << 4 |
+                    fich_golay[2][0];
+
+                DumpHex(&fich, 4);
+            } else {
+                fprintf(stderr, "golay failure: %i\n", golay_result);
             }
 
             // advance to the next frame. as long as we have sync, we know where the next frame begins

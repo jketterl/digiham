@@ -1,8 +1,27 @@
 #include "ysf_trellis.h"
-#include "ysf_bitmappings.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// derived from the trellis state machine described in the ysf spec, Appendix B
+uint8_t trellis_transitions[16][2] = {
+    {0b00, 0b11}, // 0000
+    {0b11, 0b00}, // 0001
+    {0b10, 0b01}, // 0010
+    {0b01, 0b10}, // 0011
+    {0b01, 0b10}, // 0100
+    {0b10, 0b01}, // 0101
+    {0b11, 0b00}, // 0110
+    {0b00, 0b11}, // 0111
+    {0b01, 0b10}, // 1000
+    {0b10, 0b01}, // 1001
+    {0b11, 0b00}, // 1010
+    {0b00, 0b11}, // 1011
+    {0b00, 0b11}, // 1100
+    {0b11, 0b00}, // 1101
+    {0b10, 0b01}, // 1110
+    {0b01, 0b10}  // 1111
+};
 
 uint8_t hamming_distance(uint8_t a, uint8_t b) {
     uint8_t xored = a ^ b;
@@ -19,16 +38,17 @@ typedef struct {
     uint8_t *data;
 } branch;
 
-void decode_trellis(uint8_t *input, uint8_t size, uint8_t *output) {
+uint8_t decode_trellis(uint8_t *input, uint8_t size, uint8_t *output) {
     uint8_t pos = 0;
     uint8_t shift = 0;
 
     uint8_t i;
     branch *branches = (branch*) malloc(sizeof(branch) * 16);
+    uint8_t data_size = (size + 7) / 8;
     for (i = 0; i < 16; i++) {
         branches[i].metric = 0;
-        branches[i].data = (uint8_t*) malloc(100);
-        memset(branches[i].data, 0, 100);
+        branches[i].data = (uint8_t*) malloc(data_size);
+        memset(branches[i].data, 0, data_size);
     }
 
     while (pos < size) {
@@ -66,8 +86,8 @@ void decode_trellis(uint8_t *input, uint8_t size, uint8_t *output) {
 
             branch selected_branch;
             selected_branch.metric = best_metric;
-            selected_branch.data = (uint8_t*) malloc(100);
-            memcpy(selected_branch.data, branches[selected].data, 100);
+            selected_branch.data = (uint8_t*) malloc(data_size);
+            memcpy(selected_branch.data, branches[selected].data, data_size);
             selected_branch.data[outpos] = selected_branch.data[outpos] | ( outbit << outshift );
             next_branches[i] = selected_branch;
             //fprintf(stderr, " selected: %i\n", selected);
@@ -89,7 +109,11 @@ void decode_trellis(uint8_t *input, uint8_t size, uint8_t *output) {
 
     //fprintf(stderr, "metric for best branch: %i\n", best_branch.metric);
     //fprintf(stderr, "data: %i %i\n", best_branch.data[0], best_branch.data[1]);
-    memcpy(output, best_branch.data, 100);
+    memcpy(output, best_branch.data, data_size);
+    uint8_t best_metric = best_branch.metric;
 
+    for (i = 0; i < 16; i++) free(branches[i].data);
     free(branches);
+
+    return best_metric;
 }
