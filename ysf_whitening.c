@@ -13,7 +13,7 @@ void decode_whitening(uint8_t* input, uint8_t* output, uint8_t num) {
 
         bool wb = wsr & 1;
 
-        input[pos] |= (input[pos] & (1 << shift)) ^ (wb << shift);
+        output[pos] |= (input[pos] & (1 << shift)) ^ (wb << shift);
 
         // shift and perform xor
         wb = ((wsr >> 4) & 1) ^ wb;
