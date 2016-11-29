@@ -7,6 +7,7 @@
 #include "ysf_trellis.h"
 #include "ysf_golay.h"
 #include "ysf_fich.h"
+#include "ysf_bitmappings.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -64,6 +65,28 @@ void DumpHex(const void* data, size_t size) {
     }
 }
 
+uint8_t tribit_majority_table[8] = { 0, 0, 0, 1, 0, 1, 1, 1 };
+
+void decode_tribits(uint8_t* input, uint8_t* output, uint8_t num) {
+    int i, k;
+    memset(output, 0, (num + 7) / 8);
+    for (i = 0; i < num; i++) {
+        int offset = i * 3;
+        uint8_t tribit = 0;
+        for (k = 0; k < 3; k++) {
+            int pos = k / 8;
+            int shift = 7 - (k % 8);
+
+            tribit = (tribit << 1) | ((input[pos] >> shift) & 1);
+        }
+
+        int outpos = i / 8;
+        int outshift = 7 - (i % 8);
+
+        output[outpos] |= tribit_majority_table[tribit] << outshift;
+    }
+}
+
 
 // modulo that will respect the sign
 unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
@@ -78,6 +101,25 @@ int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
         return SYNCTYPE_AVAILABLE;
     }
     return SYNCTYPE_UNKNOWN;
+}
+
+void deinterleave_voice_payload(uint8_t payload[9], uint8_t result[12]) {
+    memset(result, 0, 12);
+    int input_bit = 0;
+
+    for (input_bit = 0; input_bit < 72; input_bit++) {
+        int input_position = input_bit / 8;
+        int input_shift = 7 - input_bit % 8;
+
+        int output_bit = voice_mapping[input_bit];
+        int output_position = output_bit / 8;
+        int output_shift = 7 - output_bit % 8;
+
+        int x = (payload[input_position] >> input_shift) & 1;
+
+        // output will be blown up to 96 bits per frame
+        result[output_position] |= x << output_shift;
+    }
 }
 
 void main(int argc, char** argv) {
@@ -145,6 +187,7 @@ void main(int argc, char** argv) {
             }
 
             uint8_t fich_raw[25] = { 0 };
+            // 5 by 20 deinterleave
             for (i = 0; i < 100; i++) {
                 int offset = SYNC_SIZE + ((i * 20) % 100 + i * 20 / 100);
                 int outpos = i / 4;
@@ -177,6 +220,77 @@ void main(int argc, char** argv) {
                 fich fich = decode_fich(fich_data);
 
                 fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
+
+                if (fich.frame_type = 1) switch (fich.data_type) {
+                    case 0:
+                        // V/D mode type 1
+                        // contains 5 voice channel blocks à 72 bits
+                        for (i = 0; i < 5; i++) {
+                            uint8_t voice[9];
+                            // 20 dibits sync + 100 dibits fich + 36 dibits data channel + block offset
+                            int offset = ringbuffer_read_pos + 156 + i * 72;
+                            for (k = 0; k < 36; k++) {
+                                uint8_t pos = k / 4;
+                                uint8_t shift = 6 - 2 * (k % 4);
+
+                                voice[pos] = (ringbuffer[(offset + k) % RINGBUFFER_SIZE] & 3) << shift;
+                            }
+
+                            uint8_t voice_frame[12];
+
+                            deinterleave_voice_payload(voice, voice_frame);
+                            fwrite(voice_frame, 1, 12, stdout);
+                            fflush(stdout);
+                        }
+                        break;
+                    case 2:
+                        // V/D mode type 2
+                        // contains 5 voice channel blocks à 72 bits
+                        for (i = 0; i < 5; i++) {
+                            uint8_t voice_whitened[13];
+                            // 20 dibits sync + 100 dibits fich + 20 dibits data channel + block offset
+                            int base_offset = ringbuffer_read_pos + 140 + i * 72;
+                            // 26 by 4 deinterleave
+                            for (k = 0; k < 52; k++) {
+                                int offset = base_offset + ((k * 4) % 104 + k * 4 / 104);
+                                uint8_t pos = k / 4;
+                                uint8_t shift = 6 - 2 * (k % 4);
+
+                                voice_whitened[pos] |= (ringbuffer[offset % RINGBUFFER_SIZE] & 3) << shift;
+                            }
+
+                            uint8_t voice_tribit[13] = { 0 };
+                            decode_whitening(&voice_whitened[0], &voice_tribit[0], 104);
+
+                            uint8_t voice[7] = { 0 };
+                            decode_tribits(&voice_tribit[0], &voice[0], 27);
+
+                            // bitwise copying with offset...
+                            for (k = 0; k < 22; k++) {
+                                int inbit_pos = k + 81;
+                                int inpos = inbit_pos / 8;
+                                int inshift = 7 - (inbit_pos % 8);
+
+                                int outbit_pos = k + 27;
+                                int outpos = outbit_pos / 8;
+                                int outshift = 7 - (outbit_pos % 8);
+
+                                voice[outpos] |= ((voice_tribit[inpos] >> inshift) & 1) << outshift;
+                            }
+
+                            DumpHex(voice_tribit, 13);
+
+                            fwrite(voice, 1, 7, stdout);
+                            fflush(stdout);
+                        }
+                        break;
+                    //case 3:
+                        // Voice FR mode
+                        // not implemented yet
+                    //case 1:
+                        // Data FR mode
+                        // not implemented yet
+                }
             } else {
                 fprintf(stderr, "golay failure: %i\n", golay_result);
             }
