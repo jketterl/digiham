@@ -74,8 +74,8 @@ void decode_tribits(uint8_t* input, uint8_t* output, uint8_t num) {
         int offset = i * 3;
         uint8_t tribit = 0;
         for (k = 0; k < 3; k++) {
-            int pos = k / 8;
-            int shift = 7 - (k % 8);
+            int pos = (offset + k) / 8;
+            int shift = 7 - ((offset + k) % 8);
 
             tribit = (tribit << 1) | ((input[pos] >> shift) & 1);
         }
@@ -239,24 +239,36 @@ void main(int argc, char** argv) {
                             uint8_t voice_frame[12];
 
                             deinterleave_voice_payload(voice, voice_frame);
+                            fwrite(&fich.data_type, 1, 1, stdout);
                             fwrite(voice_frame, 1, 12, stdout);
                             fflush(stdout);
                         }
                         break;
                     case 2:
                         // V/D mode type 2
-                        // contains 5 voice channel blocks à 72 bits
+                        // contains 5 voice channel blocks à 72 (data) + 32 (check) bits
                         for (i = 0; i < 5; i++) {
-                            uint8_t voice_whitened[13];
+                            uint8_t voice_interleaved[13] = { 0 };
                             // 20 dibits sync + 100 dibits fich + 20 dibits data channel + block offset
                             int base_offset = ringbuffer_read_pos + 140 + i * 72;
-                            // 26 by 4 deinterleave
                             for (k = 0; k < 52; k++) {
-                                int offset = base_offset + ((k * 4) % 104 + k * 4 / 104);
                                 uint8_t pos = k / 4;
                                 uint8_t shift = 6 - 2 * (k % 4);
 
-                                voice_whitened[pos] |= (ringbuffer[offset % RINGBUFFER_SIZE] & 3) << shift;
+                                voice_interleaved[pos] |= (ringbuffer[(base_offset + k) % RINGBUFFER_SIZE] & 3) << shift;
+                            }
+
+                            uint8_t voice_whitened[13] = {0};
+                            // 26 by 4 deinterleave
+                            for (k = 0; k < 104; k++) {
+                                int offset = (k * 4) % 104 + k * 4 / 104;
+                                uint8_t inpos = offset / 8;
+                                uint8_t inshift = 7 - offset % 8;
+
+                                uint8_t outpos = k / 8;
+                                uint8_t outshift = 7 - k % 8;
+
+                                voice_whitened[outpos] |= ((voice_interleaved[inpos] >> inshift) & 1) << outshift;
                             }
 
                             uint8_t voice_tribit[13] = { 0 };
@@ -278,8 +290,7 @@ void main(int argc, char** argv) {
                                 voice[outpos] |= ((voice_tribit[inpos] >> inshift) & 1) << outshift;
                             }
 
-                            DumpHex(voice_tribit, 13);
-
+                            fwrite(&fich.data_type, 1, 1, stdout);
                             fwrite(voice, 1, 7, stdout);
                             fflush(stdout);
                         }

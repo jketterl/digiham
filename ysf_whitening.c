@@ -17,6 +17,6 @@ void decode_whitening(uint8_t* input, uint8_t* output, uint8_t num) {
 
         // shift and perform xor
         wb = ((wsr >> 4) & 1) ^ wb;
-        wsr = ((wsr & 0xFF) << 1) | wb;
+        wsr = ((wsr & 0b111111110) >> 1) | (wb << 8);
     }
 }
