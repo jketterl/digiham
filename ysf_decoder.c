@@ -294,6 +294,27 @@ void main(int argc, char** argv) {
                             fwrite(voice, 1, 7, stdout);
                             fflush(stdout);
                         }
+                        // contains 5 data channel blocks à 40 bits
+                        uint8_t dch_raw[25] = { 0 };
+                        
+                        // 20 dibits sync + 100 dibits fich
+                        int base_offset = ringbuffer_read_pos + 120;
+                        // 20 by 5 dibit matrix interleaving
+                        for (i = 0; i < 100; i++) {
+                            int pos = i / 4;
+                            int shift = 6 - 2 * (i % 4);
+
+                            int inpos = base_offset + ((i % 5) * 72 + (i * 2) / 10);
+
+                            dch_raw[pos] |= (ringbuffer[inpos % RINGBUFFER_SIZE] & 3) << shift;
+                        }
+
+                        uint8_t dch_whitened[13] = { 0 };
+                        uint8_t r = decode_trellis(&dch_raw[0], 100, &dch_whitened[0]);
+                        fprintf(stderr, "dch trellis result: %i\n", r);
+                        uint8_t dch[13] = { 0 };
+                        decode_whitening(&dch_whitened[0], &dch[0], 100);
+                        DumpHex(dch, 13);
                         break;
                     //case 3:
                         // Voice FR mode
