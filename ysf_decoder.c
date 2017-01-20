@@ -36,6 +36,34 @@ void meta_write(char* metadata) {
     fflush(meta_fifo);
 }
 
+typedef struct {
+    char dest[10];
+    char src[10];
+    char down[10];
+    char up[10];
+    char rem1[5];
+    char rem2[5];
+    char rem3[5];
+    char rem4[5];
+} call_data;
+
+void reset_call(call_data* call) {
+    memset(&call->dest[0], 0, 10);
+    memset(&call->src[0], 0, 10);
+    memset(&call->up[0], 0, 10);
+    memset(&call->down[0], 0, 10);
+    memset(&call->rem1[0], 0, 5);
+    memset(&call->rem2[0], 0, 5);
+    memset(&call->rem3[0], 0, 5);
+    memset(&call->rem4[0], 0, 5);
+}
+
+void meta_send_call(call_data* call) {
+   char metadata[255];
+   sprintf(metadata, "protocol:YSF;source:%.10s;target:%.10s;up:%.10s;down:%.10s\n", call->src, call->dest, call->up, call->down);
+   meta_write(&metadata[0]); 
+}
+
 void DumpHex(const void* data, size_t size) {
     char ascii[17];
     size_t i, j;
@@ -140,6 +168,8 @@ void main(int argc, char** argv) {
     int r = 0;
     bool sync = false;
     int sync_missing = 0;
+    call_data current_call;
+    reset_call(&current_call);
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
@@ -182,6 +212,8 @@ void main(int argc, char** argv) {
             if (sync_missing >= 12) {
                 fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                 sync = false;
+                reset_call(&current_call);
+                meta_send_call(&current_call);
                 meta_write("\n");
                 break;
             }
@@ -311,10 +343,35 @@ void main(int argc, char** argv) {
 
                         uint8_t dch_whitened[13] = { 0 };
                         uint8_t r = decode_trellis(&dch_raw[0], 100, &dch_whitened[0]);
-                        fprintf(stderr, "dch trellis result: %i\n", r);
                         uint8_t dch[13] = { 0 };
                         decode_whitening(&dch_whitened[0], &dch[0], 100);
-                        DumpHex(dch, 13);
+
+                        //TODO CRC16
+
+                        char* target = 0;
+                        switch(fich.frame_number) {
+                            case 0:
+                                target = &current_call.dest[0];
+                                break;
+                            case 1:
+                                target = &current_call.src[0];
+                                break;
+                            case 2:
+                                target = &current_call.down[0];
+                                break;
+                            case 3:
+                                target = &current_call.up[0];
+                                break;
+                        }
+
+                        if (target != 0) {
+                            memcpy(target, &dch[0], 10);
+                            meta_send_call(&current_call);
+                        } else {
+                            fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
+                            DumpHex(dch, 13);
+                        }
+
                         break;
                     //case 3:
                         // Voice FR mode
@@ -322,6 +379,9 @@ void main(int argc, char** argv) {
                     //case 1:
                         // Data FR mode
                         // not implemented yet
+                } else if (fich.frame_type == 2) {
+                    reset_call(&current_call);
+                    meta_send_call(&current_call);
                 }
             } else {
                 fprintf(stderr, "golay failure: %i\n", golay_result);
