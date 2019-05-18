@@ -6,7 +6,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 
-void main(int argc, char** argv) {
+int main(int argc, char** argv) {
     bool yaesu = false;
     int mode = 0;
 
@@ -103,6 +103,7 @@ void main(int argc, char** argv) {
         fflush(stdout);
     }
 
+    return 0;
 
 // void mbe_processAmbe3600x2450Framef (float *aout_buf, int *errs, int *errs2, char *err_str, char ambe_fr[4][24], char ambe_d[49], mbe_parms * cur_mp, mbe_parms * prev_mp, mbe_parms * prev_mp_enhanced, int uvquality);
 

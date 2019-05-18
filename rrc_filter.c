@@ -45,7 +45,7 @@ short rrc_filter(short sample)
 short buf[BUF_SIZE];
 int r = 0;
 
-void main() {
+int main() {
     while ((r = fread(buf, 2, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
@@ -53,4 +53,6 @@ void main() {
         }
         fwrite(buf, 2, r, stdout);
     }
+
+    return 0;
 }

@@ -150,7 +150,7 @@ void deinterleave_voice_payload(uint8_t payload[9], uint8_t result[12]) {
     }
 }
 
-void main(int argc, char** argv) {
+int main(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
         {"fifo", required_argument, NULL, 'f'},
@@ -391,4 +391,6 @@ void main(int argc, char** argv) {
             ringbuffer_read_pos = mod(ringbuffer_read_pos + FRAME_SIZE, RINGBUFFER_SIZE);
         }
     }
+
+    return 0;
 }

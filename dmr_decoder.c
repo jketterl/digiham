@@ -256,7 +256,7 @@ void collect_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t lcss
     }
 }
 
-void main(int argc, char** argv) {
+int main(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
         {"fifo", required_argument, NULL, 'f'},
@@ -463,4 +463,6 @@ void main(int argc, char** argv) {
             ringbuffer_read_pos = mod(ringbuffer_read_pos + 144, RINGBUFFER_SIZE);
         }
     }
+
+    return 0;
 }
