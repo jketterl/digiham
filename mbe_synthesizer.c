@@ -9,17 +9,23 @@
 int main(int argc, char** argv) {
     bool yaesu = false;
     int mode = 0;
+    int unvoiced_quality = 1;
 
     int c;
     static struct option long_options[] = {
         {"yaesu", no_argument, NULL, 'y'},
+        {"unvoiced-quality", required_argument, NULL, 'u'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "y", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yu:", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 fprintf(stderr, "enabling codec switching support for yaesu\n");
                 yaesu = true;
+                break;
+            case 'u':
+                unvoiced_quality = atoi(optarg);
+                fprintf(stderr, "unvoiced quality set to %d\n", unvoiced_quality);
                 break;
         }
     }
@@ -84,7 +90,7 @@ int main(int argc, char** argv) {
                         ambe_fr[i][k] = (buf[position] >> shift) & 1;
                     }
                 }
-                mbe_processAmbe3600x2450Frame(output, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, 1);
+                mbe_processAmbe3600x2450Frame(output, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
                 break;
             case 2:
                 for (i = 0; i < 49; i++) {
@@ -93,7 +99,7 @@ int main(int argc, char** argv) {
 
                     ambe_d[i] = (buf[pos] >> shift) & 1;
                 }
-                mbe_processAmbe2450Data(output, &errs, &errs2, err_str, ambe_d, current, previous, previous_enhanced, 1);
+                mbe_processAmbe2450Data(output, &errs, &errs2, err_str, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
                 break;
         }
 
