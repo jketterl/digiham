@@ -125,7 +125,7 @@ int ringbuffer_bytes() {
 
 int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
     if (memcmp(potential_sync, ysf_sync, SYNC_SIZE) == 0) {
-        fprintf(stderr, "found a sync at pos %i\n", ringbuffer_read_pos);
+        //fprintf(stderr, "found a sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_AVAILABLE;
     }
     return SYNCTYPE_UNKNOWN;
@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
             if (synctype != SYNCTYPE_UNKNOWN) {
                 sync_missing = 0;
             } else {
-                fprintf(stderr, "going to %i without sync\n", ringbuffer_read_pos);
+                //fprintf(stderr, "going to %i without sync\n", ringbuffer_read_pos);
                 sync_missing++;
             }
 
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
 
                 fich fich = decode_fich(fich_data);
 
-                fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
+                //fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
 
                 if (fich.frame_type = 1) switch (fich.data_type) {
                     case 0:
@@ -367,9 +367,9 @@ int main(int argc, char** argv) {
                         if (target != 0) {
                             memcpy(target, &dch[0], 10);
                             meta_send_call(&current_call);
-                        } else {
-                            fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
-                            DumpHex(dch, 13);
+                        //} else {
+                        //    fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
+                        //    DumpHex(dch, 13);
                         }
 
                         break;
