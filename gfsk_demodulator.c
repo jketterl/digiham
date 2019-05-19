@@ -51,7 +51,7 @@ int ringbuffer_bytes() {
     return mod(ringbuffer_write_pos - ringbuffer_read_pos, RINGBUFFER_SIZE);
 }
 
-void main() {
+int main() {
     int r = 0;
     while ((r = fread(buf, 2, READ_SIZE, stdin)) > 0) {
 
@@ -152,5 +152,7 @@ void main() {
         fwrite(output, 1, output_pos, stdout);
         fflush(stdout);
     }
+
+    return 0;
 }
 
