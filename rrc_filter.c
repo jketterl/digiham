@@ -49,7 +49,7 @@ static float xcoeffs[] =
     -0.0121655122,
   };
 
-short rrc_filter(short sample) {
+float rrc_filter(float sample) {
   float sum; int i;
   
   for (i = 0; i < NZEROS; i++)
@@ -61,19 +61,19 @@ short rrc_filter(short sample) {
   for (i = 0; i <= NZEROS; i++)
     sum += (xcoeffs[i] * xv[i]);
 
-  return (short)(sum / GAIN); // filtered sample out
+  return (sum / GAIN); // filtered sample out
 }
 
-short buf[BUF_SIZE];
+float buf[BUF_SIZE];
 int r = 0;
 
 int main() {
-    while ((r = fread(buf, 2, BUF_SIZE, stdin)) > 0) {
+    while ((r = fread(buf, 4, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
             buf[i] = rrc_filter(buf[i]);
         }
-        fwrite(buf, 2, r, stdout);
+        fwrite(buf, 4, r, stdout);
     }
 
     return 0;
