@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include "version.h"
 
 int main(int argc, char** argv) {
     bool yaesu = false;
@@ -15,9 +16,10 @@ int main(int argc, char** argv) {
     static struct option long_options[] = {
         {"yaesu", no_argument, NULL, 'y'},
         {"unvoiced-quality", required_argument, NULL, 'u'},
+        {"version", no_argument, NULL, 'v'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yu:", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yu:v", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 fprintf(stderr, "enabling codec switching support for yaesu\n");
@@ -27,6 +29,9 @@ int main(int argc, char** argv) {
                 unvoiced_quality = atoi(optarg);
                 fprintf(stderr, "unvoiced quality set to %d\n", unvoiced_quality);
                 break;
+            case 'v':
+                print_version();
+                return 0;
         }
     }
 

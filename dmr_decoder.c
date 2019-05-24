@@ -5,6 +5,7 @@
 #include <string.h>
 #include <getopt.h>
 #include "dmr_bitmappings.h"
+#include "version.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -260,14 +261,18 @@ int main(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
         {"fifo", required_argument, NULL, 'f'},
+        {"version", no_argument, NULL, 'v'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "f:", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "f:v", long_options, NULL)) != -1) {
         switch (c) {
             case 'f':
                 fprintf(stderr, "meta fifo: %s\n", optarg);
                 meta_fifo = fopen(optarg, "w");
                 break;
+            case 'v':
+                print_version();
+                return 0;
         }
     }
 
