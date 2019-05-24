@@ -39,6 +39,7 @@ void meta_write(char* metadata) {
 }
 
 typedef struct {
+    char mode[2];
     char dest[10];
     char src[10];
     char down[10];
@@ -50,6 +51,7 @@ typedef struct {
 } call_data;
 
 void reset_call(call_data* call) {
+    memset(&call->mode[0], 0, 2);
     memset(&call->dest[0], 0, 10);
     memset(&call->src[0], 0, 10);
     memset(&call->up[0], 0, 10);
@@ -62,7 +64,7 @@ void reset_call(call_data* call) {
 
 void meta_send_call(call_data* call) {
    char metadata[255];
-   sprintf(metadata, "protocol:YSF;source:%.10s;target:%.10s;up:%.10s;down:%.10s\n", call->src, call->dest, call->up, call->down);
+   sprintf(metadata, "protocol:YSF;mode:%.2s;source:%.10s;target:%.10s;up:%.10s;down:%.10s\n", call->mode, call->src, call->dest, call->up, call->down);
    meta_write(&metadata[0]); 
 }
 
@@ -145,13 +147,11 @@ int symbol_hamming_distance(uint8_t potential_sync[SYNC_SIZE]) {
 int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
     if (memcmp(potential_sync, ysf_sync, SYNC_SIZE) == 0) {
         //fprintf(stderr, "found a sync at pos %i\n", ringbuffer_read_pos);
-        fprintf(stderr, "sync cross-check hamming: %i\n", symbol_hamming_distance(potential_sync));
         return SYNCTYPE_AVAILABLE;
     }
     // accept up to 3 wrong bits and still call it a sync
     int distance = symbol_hamming_distance(potential_sync);
     if (distance <= 3) {
-        fprintf(stderr, "accepting sync due to acceptable hamming distance of %i\n", distance);
         return SYNCTYPE_AVAILABLE;
     }
     return SYNCTYPE_UNKNOWN;
@@ -287,6 +287,8 @@ int main(int argc, char** argv) {
                     case 0:
                         // V/D mode type 1
                         // contains 5 voice channel blocks à 72 bits
+                        memcpy(&current_call.mode[0], "V1", 2);
+                        meta_send_call(&current_call);
                         for (i = 0; i < 5; i++) {
                             uint8_t voice[9];
                             // 20 dibits sync + 100 dibits fich + 36 dibits data channel + block offset
@@ -309,6 +311,8 @@ int main(int argc, char** argv) {
                     case 2:
                         // V/D mode type 2
                         // contains 5 voice channel blocks à 72 (data) + 32 (check) bits
+                        memcpy(&current_call.mode[0], "V2", 2);
+                        meta_send_call(&current_call);
                         for (i = 0; i < 5; i++) {
                             uint8_t voice_interleaved[13] = { 0 };
                             // 20 dibits sync + 100 dibits fich + 20 dibits data channel + block offset
@@ -403,8 +407,10 @@ int main(int argc, char** argv) {
                         }
 
                         break;
-                    //case 3:
+                    case 3:
                         // Voice FR mode
+                        memcpy(&current_call.mode[0], "FR", 2);
+                        meta_send_call(&current_call);
                         // not implemented yet
                     //case 1:
                         // Data FR mode
