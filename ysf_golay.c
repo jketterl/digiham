@@ -57,7 +57,26 @@ uint32_t decode_golay(uint8_t *input, uint8_t *output) {
         for (l = 0; l < 24; l++) syndrome ^= (masked >> l) & 1;
         checksum = (checksum << 1) | syndrome;
     }
-    output[0] = input[0];
-    output[1] = input[1] & 0b11110000;
-    return checksum;
+
+    int bits = 0;
+    for (int i = 0; i < 32; i++) {
+        bits += (checksum >> i) & 1;
+    }
+
+    // no bit errors. perfect!
+    if (bits == 0) {
+        output[0] = input[0];
+        output[1] = input[1] & 0b11110000;
+        return 0;
+    }
+
+    // up to 3 bits are correctable
+    if (bits <= 3) {
+        fprintf(stderr, "correcting a golay error of %i\n", bits);
+        output[0] = input[0] ^ (checksum >> 8);
+        output[1] = (input[1] ^ checksum) & 0b11110000;
+        return 0;
+    }
+
+    return bits;
 }
