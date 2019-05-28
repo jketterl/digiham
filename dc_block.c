@@ -21,6 +21,7 @@ int main() {
             buf[i] = y;
         }
         fwrite(buf, 4, r, stdout);
+        fflush(stdout);
     }
 
     return 0;
