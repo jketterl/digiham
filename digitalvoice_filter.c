@@ -21,7 +21,7 @@ float filter(float sample) {
     return yv[10];
 }
 
-#define BUF_SIZE 256
+#define BUF_SIZE 32
 short buf[BUF_SIZE];
 int r = 0;
 
@@ -32,6 +32,7 @@ int main() {
             buf[i] = (short) (filter((float)buf[i] / SHRT_MAX) * SHRT_MAX);
         }
         fwrite(buf, 2, r, stdout);
+        fflush(stdout);
     }
 
     return 0;
