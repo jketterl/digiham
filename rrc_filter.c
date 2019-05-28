@@ -74,6 +74,7 @@ int main() {
             buf[i] = rrc_filter(buf[i]);
         }
         fwrite(buf, 4, r, stdout);
+        fflush(stdout);
     }
 
     return 0;
