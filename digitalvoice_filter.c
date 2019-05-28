@@ -2,6 +2,23 @@
 #include <stdio.h>
 #include <limits.h>
 
+/*
+filter parameter:
+
+filtertype	=	Butterworth
+passtype	=	Bandpass
+ripple	=
+order	=	5
+samplerate	=	8000
+corner1	=	200
+corner2	=	3400
+adzero	=
+logmin	=
+*/
+
+/* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
+   Command line: /www/usr/fisher/helpers/mkfilter -Bu -Bp -o 5 -a 2.5000000000e-02 4.2500000000e-01 -l */
+
 #define NZEROS 10
 #define NPOLES 10
 #define GAIN   2.823549227e+00
