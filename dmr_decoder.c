@@ -280,6 +280,7 @@ int main(int argc, char** argv) {
     bool sync = false;
     int sync_missing = 0;
     int lastslot = -1;
+    signed int slotstability = 0;
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
@@ -365,6 +366,7 @@ int main(int argc, char** argv) {
                 reset_embedded_data(0); reset_embedded_data(0);
                 meta_write("\n");
                 lastslot = -1;
+                slotstability = 0;
                 break;
             }
 
@@ -408,9 +410,32 @@ int main(int argc, char** argv) {
             uint8_t lcss = (tact & 24) >> 3;
 
             // slots should always be alternating, but may be overridden by 100% correct tact
-            bool use_slot = lastslot != slot || checksum == 0;
+            uint8_t next = lastslot ^ 1;
+            if (checksum == 0) {
+                if (slot != next) {
+                    if (slotstability < 5) {
+                        fprintf(stderr, "slot overridden to %i (slotstability = %i)\n", slot, slotstability);
+                        slotstability = 0;
+                    } else if (lastslot != -1) {
+                        fprintf(stderr, "slot override denied to to slot stability = %i", slotstability);
+                        slot = next;
+                    }
+                } else {
+                    //fprintf(stderr, "stability + %i\n", slotstability);
+                    slotstability += 1;
+                    if (slotstability > 100) slotstability = 100;
+                }
+            } else if (lastslot != -1) {
+                if (next != slot) {
+                    //fprintf(stderr, "stability - %i\n", slotstability);
+                    slotstability -= 1;
+                    if (slotstability < -100) slotstability = -100;
+                }
+                slot = next;
+            }
+            lastslot = slot;
 
-            if (use_slot && synctype != SYNCTYPE_UNKNOWN && synctypes[slot] != synctype) {
+            if (synctype != SYNCTYPE_UNKNOWN && synctypes[slot] != synctype) {
                 synctypes[slot] = synctype;
                 // send synctype change over metadata fifo
                 char metadata[255] = "\n";
@@ -422,12 +447,11 @@ int main(int argc, char** argv) {
                     sprintf(metadata, "protocol:DMR\n");
                 }
                 meta_write(&metadata[0]);
-                lastslot = slot;
             }
 
             fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
 
-            if (use_slot && emb_present) {
+            if (emb_present) {
                 uint8_t cc = (emb_data & 0b01111000) >> 3;
                 uint8_t lcss = emb_data & 0b00000011;
 
