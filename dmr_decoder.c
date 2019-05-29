@@ -449,7 +449,7 @@ int main(int argc, char** argv) {
                 collect_embedded_data(embedded_data, slot, lcss);
             }
 
-            fprintf(stderr, "\n");
+            fprintf(stderr, "\r");
             
             collect_cach_payload(cach_payload, lcss);
 
