@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include "dmr_bitmappings.h"
 #include "version.h"
+#include "dmr_quadratic_residue.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -315,13 +316,13 @@ int main(int argc, char** argv) {
 
             int synctype = get_synctype(potential_sync);
 
-            bool emb_present = false;
+            bool emb_valid = false;
             uint8_t emb_data = 0;
             // embedded signaling takes the place of the sync
             if (synctype != SYNCTYPE_UNKNOWN) {
                 sync_missing = 0;
             } else {
-                short emb = 0;
+                uint16_t emb = 0;
 
                 // try to decode as embedded signalling
                 for (k = 0; k < 4; k++) {
@@ -331,30 +332,14 @@ int main(int argc, char** argv) {
                     emb = (emb << 2) | ringbuffer[(ringbuffer_read_pos + 20 + k) % RINGBUFFER_SIZE];
                 }
 
-                // check emb header
-                short parity = 0;
-                uint8_t data = (emb & 0xFE00) >> 9;
-                for (k = 0; k < 9; k++) {
-                    int bit = 0, l;
-                    for (l = 0; l < 7; l++) {
-                        if ((emb_qr_matrix[k] >> l) & 1) {
-                            bit ^= ((data >> l) & 1);
-                        }
-                    }
+                emb_valid = quadratic_residue(&emb);
 
-                    parity = (parity << 1) | (bit & 1);
-                }
-
-                short parity_input = emb & 0x01FF;
-                if (parity == parity_input) {
+                if (emb_valid) {
                     // if the EMB decoded correctly, that counts towards the sync :)
                     sync_missing = 0;
-                    emb_present = true;
-                    emb_data = data;
+                    emb_data = (emb & 0xFE00) >> 9;
                 } else {
                     sync_missing ++;
-                    // TODO correct with the parity information?
-                    emb_present = false;
                 }
 
             }
@@ -452,7 +437,7 @@ int main(int argc, char** argv) {
 
             fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
 
-            if (emb_present) {
+            if (emb_valid) {
                 uint8_t cc = (emb_data & 0b01111000) >> 3;
                 uint8_t lcss = emb_data & 0b00000011;
 
@@ -464,7 +449,7 @@ int main(int argc, char** argv) {
                 collect_embedded_data(embedded_data, slot, lcss);
             }
 
-            fprintf(stderr, "\r");
+            fprintf(stderr, "\n");
             
             collect_cach_payload(cach_payload, lcss);
 
