@@ -252,16 +252,9 @@ void decode_embedded_data(slot) {
         return;
     }
 
-    uint8_t flc_opcode = (decode_matrix[0] & 0x3F00) >> 8;
-    uint32_t target_id = 0;
-    uint32_t source_id = 0;
-    // bits are spread across the matrix rather strangely; see B.2.1
-    target_id =  (decode_matrix[2] & 0b0011111111000000) << 10;
-    target_id |= (decode_matrix[3] & 0b1111111111000000);
-    target_id |= (decode_matrix[4] & 0b1111110000000000) >> 10;
-    source_id =  (decode_matrix[4] & 0b0000001111000000) << 14;
-    source_id |= (decode_matrix[5] & 0b1111111111000000) << 4;
-    source_id |= (decode_matrix[6] & 0b1111111111000000) >> 6;
+    uint8_t flc_opcode = lc[0] & 0b00111111;
+    uint32_t target_id = lc[3] << 16 | lc[4] << 8 | lc[5];
+    uint32_t source_id = lc[6] << 16 | lc[7] << 8 | lc[8];
     char metadata[255];
     switch (flc_opcode) {
         case FLC_OPCODE_GROUP:
