@@ -7,6 +7,7 @@
 #include "dmr/bitmappings.h"
 #include "version.h"
 #include "dmr/quadratic_residue.h"
+#include "dmr/hamming_16_11.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -205,7 +206,12 @@ void decode_embedded_data(slot) {
         }
     }
 
-    // TODO flc BPTC
+    for (i = 0; i < 8; i++) {
+        if (!hamming_16_11(&decode_matrix[i])) {
+            fprintf(stderr, "incorrectable error in FLC (position %i)\n", i);
+            return;
+        }
+    }
 
     uint8_t flc_opcode = (decode_matrix[0] & 0x3F00) >> 8;
     uint32_t target_id = 0;

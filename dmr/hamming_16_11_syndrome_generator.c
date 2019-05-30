@@ -1,18 +1,15 @@
-#include "quadratic_residue.h"
+#include "hamming_16_11.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
 
-//uint16_t correct_code = 0b1010101001000010;
-//uint16_t correct_code = 0b0101010000011001;
 uint16_t correct_code = 0b0000000000000000;
-//uint16_t correct_code = 0b1111111001011011;
 
 void evaluate(uint16_t error_pattern) {
     uint16_t erroneous_code = correct_code ^ error_pattern;
-    uint16_t parity = quadratic_residue_parity(&erroneous_code);
+    uint16_t parity = hamming_16_11_parity(&erroneous_code);
     fprintf(stderr, "{ %i, %i },", parity, error_pattern);
-    if (!quadratic_residue(&erroneous_code)) {
+    if (!hamming_16_11(&erroneous_code)) {
         fprintf(stderr, " // incorrectable");
     }
     fprintf(stderr, "\n");
