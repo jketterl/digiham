@@ -195,8 +195,8 @@ void copy_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t positio
 #define FLC_OPCODE_GROUP 0
 #define FLC_OPCODE_UNIT_TO_UNIT 3
 
-void decode_embedded_data(slot) {
-    fprintf(stderr, "decoding embedded data for slot %i", slot);
+void decode_embedded_signalling_data(slot) {
+    fprintf(stderr, "decoding embedded signalling for slot %i", slot);
     int i, k;
     uint16_t decode_matrix[8];
     for (i = 0; i < 16; i++) {
@@ -289,7 +289,7 @@ void collect_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t lcss
         case LCSS_STOP:
             copy_embedded_data(embedded_data, slot, embedded_position[slot]);
             if (embedded_position[slot] == 3) {
-                decode_embedded_data(slot);
+                decode_embedded_signalling_data(slot);
             }
             reset_embedded_data(slot);
             break;
