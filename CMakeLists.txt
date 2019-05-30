@@ -21,7 +21,7 @@ add_library(ysf_whitening ysf_whitening.c)
 target_include_directories (ysf_whitening PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(version version.c)
 target_include_directories (version PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-add_library(dmr_quadratic_residue dmr_quadratic_residue.c)
+add_library(dmr_quadratic_residue dmr/quadratic_residue.c)
 target_include_directories (dmr_quadratic_residue PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(rrc_filter rrc_filter.c)
@@ -35,7 +35,7 @@ add_executable(mbe_synthesizer mbe_synthesizer.c)
 target_link_libraries(mbe_synthesizer version ${LIBS})
 add_executable(digitalvoice_filter digitalvoice_filter.c)
 
-add_executable(dmr_quadratic_residue_syndrome_generator dmr_quadratic_residue_syndrome_generator.c)
+add_executable(dmr_quadratic_residue_syndrome_generator dmr/quadratic_residue_syndrome_generator.c)
 target_link_libraries(dmr_quadratic_residue_syndrome_generator dmr_quadratic_residue ${LIBS})
 
 install(TARGETS rrc_filter DESTINATION bin)

@@ -4,9 +4,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
-#include "dmr_bitmappings.h"
+#include "dmr/bitmappings.h"
 #include "version.h"
-#include "dmr_quadratic_residue.h"
+#include "dmr/quadratic_residue.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -344,12 +344,12 @@ int main(int argc, char** argv) {
 
             }
 
-            if (sync_missing >= 12) {
+            if (sync_missing >= 5) {
                 fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                 sync = false;
                 synctypes[0] = SYNCTYPE_UNKNOWN; synctypes[1] = SYNCTYPE_UNKNOWN;
                 reset_cach_payload();
-                reset_embedded_data(0); reset_embedded_data(0);
+                reset_embedded_data(0); reset_embedded_data(1);
                 meta_write("\n");
                 lastslot = -1;
                 slotstability = 0;
@@ -365,7 +365,7 @@ int main(int argc, char** argv) {
                 int pos = bit / 2;
                 int shift = 1 - (bit % 2);
 
-                tact = (tact << 1) | ((ringbuffer[(cach_start + pos) % RINGBUFFER_SIZE]) >> shift) & 1;
+                tact = (tact << 1) | (((ringbuffer[(cach_start + pos) % RINGBUFFER_SIZE]) >> shift) & 1);
             }
 
             uint8_t cach_payload[3] = {0};

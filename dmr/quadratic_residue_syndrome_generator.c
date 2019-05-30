@@ -1,4 +1,4 @@
-#include "dmr_quadratic_residue.h"
+#include "quadratic_residue.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -21,7 +21,7 @@ int main() {
         evaluate( 1 << i );
 
         for (int k = 0; k < 16; k++) {
-            if (i == k) break;
+            if (i == k) continue;
             evaluate( ( 1 << i ) ^ ( 1 << k) );
         }
     }
