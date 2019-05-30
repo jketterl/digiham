@@ -195,7 +195,7 @@ void copy_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t positio
 #define FLC_OPCODE_GROUP 0
 #define FLC_OPCODE_UNIT_TO_UNIT 3
 
-void decode_embedded_signalling_data(slot) {
+void decode_embedded_signalling_data(uint8_t slot) {
     fprintf(stderr, "decoding embedded signalling for slot %i", slot);
     int i, k;
     uint16_t decode_matrix[8];
