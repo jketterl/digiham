@@ -36,6 +36,7 @@ target_link_libraries(ysf_decoder ysf_trellis ysf_golay ysf_fich ysf_whitening v
 add_executable(mbe_synthesizer mbe_synthesizer.c)
 target_link_libraries(mbe_synthesizer version ${LIBS})
 add_executable(digitalvoice_filter digitalvoice_filter.c)
+target_link_libraries(digitalvoice_filter version ${LIBS})
 
 add_executable(dmr_quadratic_residue_syndrome_generator dmr/quadratic_residue_syndrome_generator.c)
 target_link_libraries(dmr_quadratic_residue_syndrome_generator dmr_quadratic_residue ${LIBS})

@@ -1,6 +1,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <limits.h>
+#include <getopt.h>
+#include <stdbool.h>
+#include "version.h"
 
 /*
 filter parameter:
@@ -39,17 +42,47 @@ float filter(float sample) {
 }
 
 #define BUF_SIZE 32
-short buf[BUF_SIZE];
+short short_buf[BUF_SIZE];
+float float_buf[BUF_SIZE];
 int r = 0;
+bool use_float = false;
 
-int main() {
-    while ((r = fread(buf, 2, BUF_SIZE, stdin)) > 0) {
-        int i;
-        for (i = 0; i < r; i++) {
-            buf[i] = (short) (filter((float)buf[i] / SHRT_MAX) * SHRT_MAX);
+int main(int argc, char** argv) {
+    int c;
+    static struct option long_options[] = {
+        {"float", no_argument, NULL, 'f'},
+        {"version", no_argument, NULL, 'v'},
+        { NULL, 0, NULL, 0 }
+    };
+    while ((c = getopt_long(argc, argv, "fv", long_options, NULL)) != -1) {
+        switch (c) {
+            case 'f':
+                fprintf(stderr, "digitalvoice_filter: switching to floating point operation\n");
+                use_float = true;
+                break;
+            case 'v':
+                print_version();
+                return 0;
         }
-        fwrite(buf, 2, r, stdout);
-        fflush(stdout);
+    }
+
+    int i;
+    if (use_float) {
+        while ((r = fread(float_buf, 4, BUF_SIZE, stdin)) > 0) {
+            for (i = 0; i < r; i++) {
+                float_buf[i] = filter(float_buf[i]);
+            }
+            fwrite(float_buf, 4, r, stdout);
+            fflush(stdout);
+        }
+    } else {
+        while ((r = fread(short_buf, 2, BUF_SIZE, stdin)) > 0) {
+            for (i = 0; i < r; i++) {
+                short_buf[i] = (short) (filter((float)short_buf[i] / SHRT_MAX) * SHRT_MAX);
+            }
+            fwrite(short_buf, 2, r, stdout);
+            fflush(stdout);
+        }
     }
 
     return 0;
