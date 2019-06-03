@@ -14,6 +14,8 @@ void evaluate(uint16_t error_pattern) {
     fprintf(stderr, "{ %i, %i },", parity, error_pattern);
     if (!quadratic_residue(&erroneous_code)) {
         fprintf(stderr, " // incorrectable");
+    } else if (erroneous_code != correct_code) {
+        fprintf(stderr, " // incorrect result");
     }
     fprintf(stderr, "\n");
 }

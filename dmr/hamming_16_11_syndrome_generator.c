@@ -11,6 +11,8 @@ void evaluate(uint16_t error_pattern) {
     fprintf(stderr, "{ %i, %i },", parity, error_pattern);
     if (!hamming_16_11(&erroneous_code)) {
         fprintf(stderr, " // incorrectable");
+    } else if (erroneous_code != correct_code) {
+        fprintf(stderr, " // incorrect result");
     }
     fprintf(stderr, "\n");
 }
@@ -20,10 +22,13 @@ int main() {
     for (int i = 0; i < 16; i++) {
         evaluate( 1 << i );
 
+        /*
+        // seems like we can only correct single-bit errors
         for (int k = 0; k < 16; k++) {
             if (i == k) continue;
             evaluate( ( 1 << i ) ^ ( 1 << k) );
         }
+        */
     }
 
 }

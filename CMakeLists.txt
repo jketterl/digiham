@@ -25,6 +25,8 @@ add_library(dmr_quadratic_residue dmr/quadratic_residue.c)
 target_include_directories (dmr_quadratic_residue PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(dmr_hamming_16_11 dmr/hamming_16_11.c)
 target_include_directories (dmr_hamming_16_11 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(dmr_hamming_7_4 dmr/hamming_7_4.c)
+target_include_directories (dmr_hamming_7_4 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(rrc_filter rrc_filter.c)
 add_executable(dc_block dc_block.c)
@@ -42,6 +44,8 @@ add_executable(dmr_quadratic_residue_syndrome_generator dmr/quadratic_residue_sy
 target_link_libraries(dmr_quadratic_residue_syndrome_generator dmr_quadratic_residue ${LIBS})
 add_executable(dmr_hamming_16_11_syndrome_generator dmr/hamming_16_11_syndrome_generator.c)
 target_link_libraries(dmr_hamming_16_11_syndrome_generator dmr_hamming_16_11 ${LIBS})
+add_executable(dmr_hamming_7_4_syndrome_generator dmr/hamming_7_4_syndrome_generator.c)
+target_link_libraries(dmr_hamming_7_4_syndrome_generator dmr_hamming_7_4 ${LIBS})
 
 install(TARGETS rrc_filter DESTINATION bin)
 install(TARGETS dc_block DESTINATION bin)
