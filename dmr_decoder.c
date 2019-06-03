@@ -8,6 +8,7 @@
 #include "version.h"
 #include "dmr/quadratic_residue.h"
 #include "dmr/hamming_16_11.h"
+#include "dmr/hamming_7_4.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -418,16 +419,7 @@ int main(int argc, char** argv) {
                 cach_payload[payload_pos] |= ((ringbuffer[(cach_start + pos) % RINGBUFFER_SIZE] >> shift) & 1) << payload_shift;
             }
 
-            // HAMMING checksum
-            uint8_t checksum = 0;
-            for (k = 0; k < 3; k++) {
-                uint8_t masked = tact & tact_hamming_parity_check_matrix[k];
-                int l; bool syndrome = 0;
-                for (l = 0; l < 7; l++) syndrome ^= (masked >> l) & 1;
-                checksum = (checksum << 1) | syndrome;
-            }
-            // correct single bit error
-            if (checksum > 0) tact ^= 1 << (tact_hamming_corrections[checksum] - 1);
+            bool tact_correct = hamming_7_4(&tact);
 
             uint8_t slot = (tact & 32) >> 5;
             uint8_t busy = (tact & 64) >> 6;
@@ -435,7 +427,7 @@ int main(int argc, char** argv) {
 
             // slots should always be alternating, but may be overridden by 100% correct tact
             uint8_t next = lastslot ^ 1;
-            if (checksum == 0) {
+            if (tact_correct) {
                 if (slot != next) {
                     if (slotstability < 5) {
                         fprintf(stderr, "slot overridden to %i (slotstability = %i)\n", slot, slotstability);
