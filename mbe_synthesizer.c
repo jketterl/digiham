@@ -9,6 +9,7 @@
 
 int main(int argc, char** argv) {
     bool yaesu = false;
+    bool use_float = false;
     int mode = 0;
     int unvoiced_quality = 1;
 
@@ -17,9 +18,10 @@ int main(int argc, char** argv) {
         {"yaesu", no_argument, NULL, 'y'},
         {"unvoiced-quality", required_argument, NULL, 'u'},
         {"version", no_argument, NULL, 'v'},
+        {"float", no_argument, NULL, 'f'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yu:v", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yu:vf", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 fprintf(stderr, "enabling codec switching support for yaesu\n");
@@ -28,6 +30,10 @@ int main(int argc, char** argv) {
             case 'u':
                 unvoiced_quality = atoi(optarg);
                 fprintf(stderr, "unvoiced quality set to %d\n", unvoiced_quality);
+                break;
+            case 'f':
+                fprintf(stderr, "mbe_synthesizer: switching to floating point operation\n");
+                use_float = true;
                 break;
             case 'v':
                 print_version();
@@ -44,7 +50,8 @@ int main(int argc, char** argv) {
     mbe_initMbeParms(current, previous, previous_enhanced);
 
     int r, framesize;
-    short output[160];
+    short output_short[160];
+    float output_float[160];
     int errs = 0, errs2 = 0;
     char err_str[64];
     char ambe_d[49];
@@ -95,7 +102,11 @@ int main(int argc, char** argv) {
                         ambe_fr[i][k] = (buf[position] >> shift) & 1;
                     }
                 }
-                mbe_processAmbe3600x2450Frame(output, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
+                if (use_float) {
+                    mbe_processAmbe3600x2450Framef(output_float, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
+                } else {
+                    mbe_processAmbe3600x2450Frame(output_short, &errs, &errs2, err_str, ambe_fr, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
+                }
                 break;
             case 2:
                 for (i = 0; i < 49; i++) {
@@ -104,13 +115,21 @@ int main(int argc, char** argv) {
 
                     ambe_d[i] = (buf[pos] >> shift) & 1;
                 }
-                mbe_processAmbe2450Data(output, &errs, &errs2, err_str, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
+                if (use_float) {
+                    mbe_processAmbe2450Dataf(output_float, &errs, &errs2, err_str, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
+                } else {
+                    mbe_processAmbe2450Data(output_short, &errs, &errs2, err_str, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
+                }
                 break;
         }
 
         fprintf(stderr, "%s", err_str);
 
-        fwrite(output, 2, 160, stdout);
+        if (use_float) {
+            fwrite(output_float, 4, 160, stdout);
+        } else {
+            fwrite(output_short, 2, 160, stdout);
+        }
         fflush(stdout);
     }
 
