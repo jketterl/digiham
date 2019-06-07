@@ -5,11 +5,11 @@
 #include <string.h>
 #include <getopt.h>
 #include "ysf_trellis.h"
-#include "ysf_golay.h"
 #include "ysf_fich.h"
 #include "ysf_bitmappings.h"
 #include "ysf_whitening.h"
 #include "version.h"
+#include "ysf/golay_24_12.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -260,24 +260,27 @@ int main(int argc, char** argv) {
             uint8_t fich_trellis[13];
             uint8_t result = decode_trellis(&fich_raw[0], 100, &fich_trellis[0]);
 
-            uint8_t fich_golay[4][2];
-            uint32_t golay_result = 0;
+            uint32_t fich_golay[4] = { 0 };
+            bool golay_result = true;
             for (i = 0; i < 4; i++) {
-                uint32_t g = decode_golay(&fich_trellis[i * 3], &fich_golay[i][0]);
-                golay_result += g;
+                fich_golay[i] = 0 |
+                                fich_trellis[i * 3] << 16 |
+                                fich_trellis[i * 3 + 1] << 8 |
+                                fich_trellis[i * 3 + 2];
+                golay_result &= golay_24_12(&fich_golay[i]);
             }
 
-            if (golay_result == 0) {
+            if (golay_result) {
                 // TODO there's still a CRC16 to be implemented here...
 
                 // fich decoded without errors? accept as sync
                 sync_missing = 0;
 
                 // re-combine final fich from golay result
-                uint32_t fich_data =
-                    fich_golay[0][0] << 24 | (fich_golay[0][1] & 0xf0) << 16 |
-                    fich_golay[1][0] << 12 | (fich_golay[1][1] & 0xf0) << 4 |
-                    fich_golay[2][0];
+                uint32_t fich_data = 0 |
+                    (fich_golay[0] & 0b00000000111111111111000000000000) << 8 |
+                    (fich_golay[1] & 0b00000000111111111111000000000000) >> 4 |
+                    (fich_golay[2] & 0b00000000111111110000000000000000) >> 16;
 
                 fich fich = decode_fich(fich_data);
 
@@ -420,7 +423,7 @@ int main(int argc, char** argv) {
                     meta_send_call(&current_call);
                 }
             } else {
-                fprintf(stderr, "golay failure: %i\n", golay_result);
+                fprintf(stderr, "golay failure\n");
             }
 
             // advance to the next frame. as long as we have sync, we know where the next frame begins
