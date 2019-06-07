@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
-#include "ysf_trellis.h"
-#include "ysf_fich.h"
-#include "ysf_bitmappings.h"
-#include "ysf_whitening.h"
+#include "ysf/trellis.h"
+#include "ysf/fich.h"
+#include "ysf/bitmappings.h"
+#include "ysf/whitening.h"
 #include "version.h"
 #include "ysf/golay_24_12.h"
 

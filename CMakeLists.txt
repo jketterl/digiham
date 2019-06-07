@@ -11,11 +11,11 @@ INCLUDE_DIRECTORIES(
 
 SET(LIBS ${LIBS} ${LIBMBE_LIBRARY})
 
-add_library(ysf_trellis ysf_trellis.c)
+add_library(ysf_trellis ysf/trellis.c)
 target_include_directories (ysf_trellis PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-add_library(ysf_fich ysf_fich.c)
+add_library(ysf_fich ysf/fich.c)
 target_include_directories (ysf_fich PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-add_library(ysf_whitening ysf_whitening.c)
+add_library(ysf_whitening ysf/whitening.c)
 target_include_directories (ysf_whitening PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(version version.c)
 target_include_directories (version PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

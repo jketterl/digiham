@@ -1,4 +1,4 @@
-#include "ysf_whitening.h"
+#include "whitening.h"
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
