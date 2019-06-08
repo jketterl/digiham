@@ -10,6 +10,7 @@
 #include "ysf/whitening.h"
 #include "version.h"
 #include "ysf/golay_24_12.h"
+#include "ysf/crc16.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -271,156 +272,162 @@ int main(int argc, char** argv) {
             }
 
             if (golay_result) {
-                // TODO there's still a CRC16 to be implemented here...
-
-                // fich decoded without errors? accept as sync
-                sync_missing = 0;
-
                 // re-combine final fich from golay result
                 uint32_t fich_data = 0 |
                     (fich_golay[0] & 0b00000000111111111111000000000000) << 8 |
                     (fich_golay[1] & 0b00000000111111111111000000000000) >> 4 |
                     (fich_golay[2] & 0b00000000111111110000000000000000) >> 16;
 
-                fich fich = decode_fich(fich_data);
+                uint16_t fich_checksum = 0 |
+                    (fich_golay[2] & 0b00000000000000001111000000000000) |
+                    (fich_golay[3] & 0b00000000111111111111000000000000) >> 12;
 
-                //fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
+                if (crc16(&fich_data, &fich_checksum)) {
+                    // fich decoded without errors? accept as sync
+                    sync_missing = 0;
 
-                if (fich.frame_type == 1) switch (fich.data_type) {
-                    case 0:
-                        // V/D mode type 1
-                        // contains 5 voice channel blocks à 72 bits
-                        memcpy(&current_call.mode[0], "V1", 2);
-                        meta_send_call(&current_call);
-                        for (i = 0; i < 5; i++) {
-                            uint8_t voice[9];
-                            // 20 dibits sync + 100 dibits fich + 36 dibits data channel + block offset
-                            int offset = ringbuffer_read_pos + 156 + i * 72;
-                            for (k = 0; k < 36; k++) {
-                                uint8_t pos = k / 4;
-                                uint8_t shift = 6 - 2 * (k % 4);
+                    fich fich = decode_fich(fich_data);
 
-                                voice[pos] = (ringbuffer[(offset + k) % RINGBUFFER_SIZE] & 3) << shift;
-                            }
+                    //fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
 
-                            uint8_t voice_frame[12];
-
-                            deinterleave_voice_payload(voice, voice_frame);
-                            fwrite(&fich.data_type, 1, 1, stdout);
-                            fwrite(voice_frame, 1, 12, stdout);
-                            fflush(stdout);
-                        }
-                        break;
-                    case 2:
-                        // V/D mode type 2
-                        // contains 5 voice channel blocks à 72 (data) + 32 (check) bits
-                        memcpy(&current_call.mode[0], "V2", 2);
-                        meta_send_call(&current_call);
-                        for (i = 0; i < 5; i++) {
-                            uint8_t voice_interleaved[13] = { 0 };
-                            // 20 dibits sync + 100 dibits fich + 20 dibits data channel + block offset
-                            int base_offset = ringbuffer_read_pos + 140 + i * 72;
-                            for (k = 0; k < 52; k++) {
-                                uint8_t pos = k / 4;
-                                uint8_t shift = 6 - 2 * (k % 4);
-
-                                voice_interleaved[pos] |= (ringbuffer[(base_offset + k) % RINGBUFFER_SIZE] & 3) << shift;
-                            }
-
-                            uint8_t voice_whitened[13] = {0};
-                            // 26 by 4 deinterleave
-                            for (k = 0; k < 104; k++) {
-                                int offset = (k * 4) % 104 + k * 4 / 104;
-                                uint8_t inpos = offset / 8;
-                                uint8_t inshift = 7 - offset % 8;
-
-                                uint8_t outpos = k / 8;
-                                uint8_t outshift = 7 - k % 8;
-
-                                voice_whitened[outpos] |= ((voice_interleaved[inpos] >> inshift) & 1) << outshift;
-                            }
-
-                            uint8_t voice_tribit[13] = { 0 };
-                            decode_whitening(&voice_whitened[0], &voice_tribit[0], 104);
-
-                            uint8_t voice[7] = { 0 };
-                            decode_tribits(&voice_tribit[0], &voice[0], 27);
-
-                            // bitwise copying with offset...
-                            for (k = 0; k < 22; k++) {
-                                int inbit_pos = k + 81;
-                                int inpos = inbit_pos / 8;
-                                int inshift = 7 - (inbit_pos % 8);
-
-                                int outbit_pos = k + 27;
-                                int outpos = outbit_pos / 8;
-                                int outshift = 7 - (outbit_pos % 8);
-
-                                voice[outpos] |= ((voice_tribit[inpos] >> inshift) & 1) << outshift;
-                            }
-
-                            fwrite(&fich.data_type, 1, 1, stdout);
-                            fwrite(voice, 1, 7, stdout);
-                            fflush(stdout);
-                        }
-                        // contains 5 data channel blocks à 40 bits
-                        uint8_t dch_raw[25] = { 0 };
-                        
-                        // 20 dibits sync + 100 dibits fich
-                        int base_offset = ringbuffer_read_pos + 120;
-                        // 20 by 5 dibit matrix interleaving
-                        for (i = 0; i < 100; i++) {
-                            int pos = i / 4;
-                            int shift = 6 - 2 * (i % 4);
-
-                            int inpos = base_offset + ((i % 5) * 72 + (i * 2) / 10);
-
-                            dch_raw[pos] |= (ringbuffer[inpos % RINGBUFFER_SIZE] & 3) << shift;
-                        }
-
-                        uint8_t dch_whitened[13] = { 0 };
-                        uint8_t r = decode_trellis(&dch_raw[0], 100, &dch_whitened[0]);
-                        uint8_t dch[13] = { 0 };
-                        decode_whitening(&dch_whitened[0], &dch[0], 100);
-
-                        //TODO CRC16
-
-                        char* target = 0;
-                        switch(fich.frame_number) {
-                            case 0:
-                                target = &current_call.dest[0];
-                                break;
-                            case 1:
-                                target = &current_call.src[0];
-                                break;
-                            case 2:
-                                target = &current_call.down[0];
-                                break;
-                            case 3:
-                                target = &current_call.up[0];
-                                break;
-                        }
-
-                        if (target != 0) {
-                            memcpy(target, &dch[0], 10);
+                    if (fich.frame_type == 1) switch (fich.data_type) {
+                        case 0:
+                            // V/D mode type 1
+                            // contains 5 voice channel blocks à 72 bits
+                            memcpy(&current_call.mode[0], "V1", 2);
                             meta_send_call(&current_call);
-                        //} else {
-                        //    fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
-                        //    DumpHex(dch, 13);
-                        }
+                            for (i = 0; i < 5; i++) {
+                                uint8_t voice[9];
+                                // 20 dibits sync + 100 dibits fich + 36 dibits data channel + block offset
+                                int offset = ringbuffer_read_pos + 156 + i * 72;
+                                for (k = 0; k < 36; k++) {
+                                    uint8_t pos = k / 4;
+                                    uint8_t shift = 6 - 2 * (k % 4);
 
-                        break;
-                    case 3:
-                        // Voice FR mode
-                        memcpy(&current_call.mode[0], "FR", 2);
+                                    voice[pos] = (ringbuffer[(offset + k) % RINGBUFFER_SIZE] & 3) << shift;
+                                }
+
+                                uint8_t voice_frame[12];
+
+                                deinterleave_voice_payload(voice, voice_frame);
+                                fwrite(&fich.data_type, 1, 1, stdout);
+                                fwrite(voice_frame, 1, 12, stdout);
+                                fflush(stdout);
+                            }
+                            break;
+                        case 2:
+                            // V/D mode type 2
+                            // contains 5 voice channel blocks à 72 (data) + 32 (check) bits
+                            memcpy(&current_call.mode[0], "V2", 2);
+                            meta_send_call(&current_call);
+                            for (i = 0; i < 5; i++) {
+                                uint8_t voice_interleaved[13] = { 0 };
+                                // 20 dibits sync + 100 dibits fich + 20 dibits data channel + block offset
+                                int base_offset = ringbuffer_read_pos + 140 + i * 72;
+                                for (k = 0; k < 52; k++) {
+                                    uint8_t pos = k / 4;
+                                    uint8_t shift = 6 - 2 * (k % 4);
+
+                                    voice_interleaved[pos] |= (ringbuffer[(base_offset + k) % RINGBUFFER_SIZE] & 3) << shift;
+                                }
+
+                                uint8_t voice_whitened[13] = {0};
+                                // 26 by 4 deinterleave
+                                for (k = 0; k < 104; k++) {
+                                    int offset = (k * 4) % 104 + k * 4 / 104;
+                                    uint8_t inpos = offset / 8;
+                                    uint8_t inshift = 7 - offset % 8;
+
+                                    uint8_t outpos = k / 8;
+                                    uint8_t outshift = 7 - k % 8;
+
+                                    voice_whitened[outpos] |= ((voice_interleaved[inpos] >> inshift) & 1) << outshift;
+                                }
+
+                                uint8_t voice_tribit[13] = { 0 };
+                                decode_whitening(&voice_whitened[0], &voice_tribit[0], 104);
+
+                                uint8_t voice[7] = { 0 };
+                                decode_tribits(&voice_tribit[0], &voice[0], 27);
+
+                                // bitwise copying with offset...
+                                for (k = 0; k < 22; k++) {
+                                    int inbit_pos = k + 81;
+                                    int inpos = inbit_pos / 8;
+                                    int inshift = 7 - (inbit_pos % 8);
+
+                                    int outbit_pos = k + 27;
+                                    int outpos = outbit_pos / 8;
+                                    int outshift = 7 - (outbit_pos % 8);
+
+                                    voice[outpos] |= ((voice_tribit[inpos] >> inshift) & 1) << outshift;
+                                }
+
+                                fwrite(&fich.data_type, 1, 1, stdout);
+                                fwrite(voice, 1, 7, stdout);
+                                fflush(stdout);
+                            }
+                            // contains 5 data channel blocks à 40 bits
+                            uint8_t dch_raw[25] = { 0 };
+
+                            // 20 dibits sync + 100 dibits fich
+                            int base_offset = ringbuffer_read_pos + 120;
+                            // 20 by 5 dibit matrix interleaving
+                            for (i = 0; i < 100; i++) {
+                                int pos = i / 4;
+                                int shift = 6 - 2 * (i % 4);
+
+                                int inpos = base_offset + ((i % 5) * 72 + (i * 2) / 10);
+
+                                dch_raw[pos] |= (ringbuffer[inpos % RINGBUFFER_SIZE] & 3) << shift;
+                            }
+
+                            uint8_t dch_whitened[13] = { 0 };
+                            uint8_t r = decode_trellis(&dch_raw[0], 100, &dch_whitened[0]);
+                            uint8_t dch[13] = { 0 };
+                            decode_whitening(&dch_whitened[0], &dch[0], 100);
+
+                            //TODO CRC16
+
+                            char* target = 0;
+                            switch(fich.frame_number) {
+                                case 0:
+                                    target = &current_call.dest[0];
+                                    break;
+                                case 1:
+                                    target = &current_call.src[0];
+                                    break;
+                                case 2:
+                                    target = &current_call.down[0];
+                                    break;
+                                case 3:
+                                    target = &current_call.up[0];
+                                    break;
+                            }
+
+                            if (target != 0) {
+                                memcpy(target, &dch[0], 10);
+                                meta_send_call(&current_call);
+                            //} else {
+                            //    fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
+                            //    DumpHex(dch, 13);
+                            }
+
+                            break;
+                        case 3:
+                            // Voice FR mode
+                            memcpy(&current_call.mode[0], "FR", 2);
+                            meta_send_call(&current_call);
+                            // not implemented yet
+                        //case 1:
+                            // Data FR mode
+                            // not implemented yet
+                    } else if (fich.frame_type == 2) {
+                        reset_call(&current_call);
                         meta_send_call(&current_call);
-                        // not implemented yet
-                    //case 1:
-                        // Data FR mode
-                        // not implemented yet
-                } else if (fich.frame_type == 2) {
-                    reset_call(&current_call);
-                    meta_send_call(&current_call);
+                    }
+                } else {
+                    fprintf(stderr, "CRC failure\n");
                 }
             } else {
                 fprintf(stderr, "golay failure\n");
