@@ -3,12 +3,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
-#include <limits.h>
+#include <float.h>
 
 #define RINGBUFFER_SIZE 1024
 #define READ_SIZE 256
-short ringbuffer[RINGBUFFER_SIZE];
-short buf[READ_SIZE];
+float ringbuffer[RINGBUFFER_SIZE];
+float buf[READ_SIZE];
 int ringbuffer_read_pos = 0;
 int ringbuffer_write_pos = 0;
 #define OUTPUT_SIZE 100
@@ -18,21 +18,21 @@ int output_pos = 0;
 #define SAMPLES_PER_SYMBOL 10
 #define VOLUME_RB_SIZE 100
 
-short volume_rb[VOLUME_RB_SIZE];
+float volume_rb[VOLUME_RB_SIZE];
 int volume_rb_pos = 0;
 
 #define VARIANCE_SYMBOLS 100
 #define VARIANCE_RB_SIZE VARIANCE_SYMBOLS * SAMPLES_PER_SYMBOL
-short variance_rb[VARIANCE_RB_SIZE];
+float variance_rb[VARIANCE_RB_SIZE];
 int variance_rb_pos = 0;
 
-short min = 0, max = 0, centre = 0, umid = 0, lmid = 0;
+float min = 0, max = 0, centre = 0, umid = 0, lmid = 0;
 
 unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
 
 void calibrate_audio() {
     int i;
-    min = SHRT_MAX, max = SHRT_MIN;
+    min = FLT_MAX, max = FLT_MIN;
 
     for (i = 0; i < VOLUME_RB_SIZE; i++) {
         if (volume_rb[i] < min) min = volume_rb[i];
@@ -53,7 +53,7 @@ int ringbuffer_bytes() {
 
 int main() {
     int r = 0;
-    while ((r = fread(buf, 2, READ_SIZE, stdin)) > 0) {
+    while ((r = fread(buf, 4, READ_SIZE, stdin)) > 0) {
 
         int i = 0;
         for (i = 0; i < r; i++) {
@@ -64,9 +64,9 @@ int main() {
 
         output_pos = 0;
         while (ringbuffer_bytes() > SAMPLES_PER_SYMBOL + 1) {
-            int sum = 0;
+            float sum = 0;
             for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
-                short value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
+                float value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
                 if (i > 0 && i < 9) sum += value;
                 variance_rb[variance_rb_pos + i] = value;
             }
@@ -88,11 +88,11 @@ int main() {
                     double mean = (float) total / VARIANCE_SYMBOLS;
                     //fprintf(stderr, "total: %i, mean: %.0f ", total, mean);
 
-                    double sum = 0;
+                    double dsum = 0;
                     for (k = 0; k < VARIANCE_SYMBOLS; k++) {
-                        sum += pow(mean - variance_rb[k * SAMPLES_PER_SYMBOL + i], 2);
+                        dsum += pow(mean - variance_rb[k * SAMPLES_PER_SYMBOL + i], 2);
                     }
-                    double variance = sum / VARIANCE_SYMBOLS;
+                    double variance = dsum / VARIANCE_SYMBOLS;
                     //fprintf(stderr, "variance: %.0f\n", variance);
 
                     if (i == 0 || variance < vmin) {
@@ -119,7 +119,7 @@ int main() {
                 variance_rb_pos %= VARIANCE_RB_SIZE;
             }
 
-            short average = sum / (SAMPLES_PER_SYMBOL - 2);
+            float average = sum / (SAMPLES_PER_SYMBOL - 2);
             volume_rb[volume_rb_pos] = average;
 
             volume_rb_pos += 1;
