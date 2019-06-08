@@ -287,7 +287,11 @@ int main(int argc, char** argv) {
                     (fich_golay[2] & 0b00000000000000001111000000000000) |
                     (fich_golay[3] & 0b00000000111111111111000000000000) >> 12;
 
-                if (crc16(&fich_data, &fich_checksum)) {
+                // the endianess is reversed at this point for some reason.
+                // not sure if it's a good idea to just flip it around like this, but it seems to work.
+                uint32_t be =  __builtin_bswap32(fich_data);
+
+                if (crc16((uint8_t*) &be, 4, &fich_checksum)) {
                     // fich decoded without errors? accept as sync
                     sync_missing = 0;
 
@@ -400,36 +404,42 @@ int main(int argc, char** argv) {
 
                         uint8_t dch_whitened[13] = { 0 };
                         uint8_t r = decode_trellis(&dch_raw[0], 100, &dch_whitened[0]);
-                        uint8_t dch[13] = { 0 };
-                        decode_whitening(&dch_whitened[0], &dch[0], 100);
 
-                        //TODO CRC16
+                        uint16_t checksum = dch_whitened[10] << 8 | dch_whitened[11];
+                        if (crc16((uint8_t*) &dch_whitened, 10, &checksum)) {
+                            uint8_t dch[13] = { 0 };
+                            decode_whitening(&dch_whitened[0], &dch[0], 100);
 
-                        if (current_fich > 0) {
-                            char* target = 0;
-                            switch(current_fich->frame_number) {
-                                case 0:
-                                    target = &current_call.dest[0];
-                                    break;
-                                case 1:
-                                    target = &current_call.src[0];
-                                    break;
-                                case 2:
-                                    target = &current_call.down[0];
-                                    break;
-                                case 3:
-                                    target = &current_call.up[0];
-                                    break;
+
+                            if (current_fich > 0) {
+                                char* target = 0;
+                                switch(current_fich->frame_number) {
+                                    case 0:
+                                        target = &current_call.dest[0];
+                                        break;
+                                    case 1:
+                                        target = &current_call.src[0];
+                                        break;
+                                    case 2:
+                                        target = &current_call.down[0];
+                                        break;
+                                    case 3:
+                                        target = &current_call.up[0];
+                                        break;
+                                }
+
+                                if (target != 0) {
+                                    memcpy(target, &dch[0], 10);
+                                    meta_send_call(&current_call);
+                                //} else {
+                                //    fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
+                                //    DumpHex(dch, 13);
+                                }
                             }
-
-                            if (target != 0) {
-                                memcpy(target, &dch[0], 10);
-                                meta_send_call(&current_call);
-                            //} else {
-                            //    fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
-                            //    DumpHex(dch, 13);
-                            }
+                        } else {
+                            fprintf(stderr, "DCH CRC failure\n");
                         }
+
 
                         break;
                     case 3:

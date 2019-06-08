@@ -1,5 +1,5 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-uint16_t crc16_checksum(uint32_t* data);
-bool crc16(uint32_t* data, uint16_t* checksum);
+uint16_t crc16_checksum(uint8_t* data, int count);
+bool crc16(uint8_t* data, int count, uint16_t* checksum);
