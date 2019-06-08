@@ -338,7 +338,7 @@ int main(int argc, char** argv) {
                     case 2:
                         // V/D mode type 2
                         // contains 5 voice channel blocks à 72 (data) + 32 (check) bits
-                        memcpy(&current_call.mode[0], "V2", 2);
+                        memcpy(&current_call.mode[0], "DN", 2);
                         meta_send_call(&current_call);
                         for (i = 0; i < 5; i++) {
                             uint8_t voice_interleaved[13] = { 0 };
@@ -444,7 +444,7 @@ int main(int argc, char** argv) {
                         break;
                     case 3:
                         // Voice FR mode
-                        memcpy(&current_call.mode[0], "FR", 2);
+                        memcpy(&current_call.mode[0], "VW", 2);
                         meta_send_call(&current_call);
                         // not implemented yet
                     //case 1:
