@@ -310,6 +310,7 @@ int main(int argc, char** argv) {
 
                 //fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
 
+                // frame type 1 = communications channel (where the data / voice is)
                 if (running_fich->frame_type == 1) switch (running_fich->data_type) {
                     case 0:
                         // V/D mode type 1
@@ -450,6 +451,56 @@ int main(int argc, char** argv) {
                     //case 1:
                         // Data FR mode
                         // not implemented yet
+                // frame type 0 = header channel, i.e. beginning of transmission
+                // the same information is in a frame_type 2... but there's no point decoding it since we are resetting
+                // it as soon as we see one
+                } else if (running_fich->frame_type == 0) {
+                    for (int dch_num = 0; dch_num < 2; dch_num++) {
+                        // contains 5 data channel blocks à 40 bits
+                        uint8_t dch_raw[45] = { 0 };
+
+                        // 20 dibits sync + 100 dibits fich + DCH offset
+                        int base_offset = ringbuffer_read_pos + 120 + dch_num * 36;
+                        // 20 by 9 dibit matrix interleaving
+                        // also pulls out the bits from their 72bit blocks
+                        for (i = 0; i < 180; i++) {
+                            int pos = i / 4;
+                            int shift = 6 - 2 * (i % 4);
+
+                            int streampos = (i % 9) * 20 + i / 9;
+                            int blockpos = (streampos / 36) * 72;
+                            int blockoffset = streampos % 36;
+                            int inpos = base_offset + blockpos + blockoffset;
+
+                            dch_raw[pos] |= (ringbuffer[inpos % RINGBUFFER_SIZE] & 3) << shift;
+                        }
+
+                        uint8_t dch_whitened[23] = { 0 };
+                        uint8_t r = decode_trellis(&dch_raw[0], 180, &dch_whitened[0]);
+
+                        uint16_t checksum = (dch_whitened[20] << 8) | dch_whitened[21];
+                        bool crc_valid = crc16((uint8_t *) &dch_whitened, 20, &checksum);
+
+                        if (crc_valid) {
+                            uint8_t dch[20] = { 0 };
+                            decode_whitening(&dch_whitened[0], &dch[0], 160);
+
+                            if (dch_num == 0) {
+                                // CSD1 - contains Dest and Src fields
+                                memcpy(&current_call.dest[0], &dch[0], 10);
+                                memcpy(&current_call.src[0], &dch[10], 10);
+                            } else if (dch_num == 1) {
+                                // CSD2 - contains downlink and uplink fields
+                                memcpy(&current_call.down[0], &dch[0], 10);
+                                memcpy(&current_call.up[0], &dch[10], 10);
+                            }
+                            meta_send_call(&current_call);
+                        } else {
+                            fprintf(stderr, "header frame DCH%i CRC failure\n", dch_num + 1);
+                        }
+                    }
+
+                // frame type 2 = terminator channel, i.e. end of transmission
                 } else if (running_fich->frame_type == 2) {
                     reset_call(&current_call);
                     meta_send_call(&current_call);
