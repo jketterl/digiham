@@ -52,10 +52,43 @@ uint8_t dmr_ms_voice_sync[] = { 1,3,3,3,1,3,3,1,1,1,3,1,3,1,1,1,1,3,3,1,3,3,3,1 
 
 FILE *meta_fifo = NULL;
 
-void meta_write(char* metadata) {
+typedef struct {
+    char* type;
+    uint32_t source;
+    uint32_t target;
+} meta_struct;
+
+meta_struct metadata[2];
+
+void meta_write(uint8_t slot) {
     if (meta_fifo == NULL) return;
-    fwrite(metadata, 1, strlen(metadata), meta_fifo);
+    meta_struct* meta = &metadata[slot];
+    char meta_string[255];
+    char builder[255];
+
+    sprintf(meta_string, "protocol:DMR;slot:%i;", slot);
+    if (strlen(meta->type) > 0) {
+        sprintf(builder, "type:%s;", meta->type);
+        strcat(meta_string, builder);
+    }
+    if (meta->source > 0) {
+        sprintf(builder, "source:%i;", meta->source);
+        strcat(meta_string, builder);
+    }
+    if (meta->target > 0) {
+        sprintf(builder, "target:%i;", meta->target);
+        strcat(meta_string, builder);
+    }
+    strcat(meta_string, "\n");
+    fwrite(meta_string, 1, strlen(meta_string), meta_fifo);
     fflush(meta_fifo);
+}
+
+void meta_reset(uint8_t slot) {
+    meta_struct* meta = &metadata[slot];
+    meta->type = "";
+    meta->source = 0;
+    meta->target = 0;
 }
 
 void DumpHex(const void* data, size_t size) {
@@ -218,17 +251,20 @@ void decode_lc(uint8_t lc[9], uint8_t slot) {
     uint8_t flc_opcode = lc[0] & 0b00111111;
     uint32_t target_id = lc[3] << 16 | lc[4] << 8 | lc[5];
     uint32_t source_id = lc[6] << 16 | lc[7] << 8 | lc[8];
-    char metadata[255];
     switch (flc_opcode) {
         case FLC_OPCODE_GROUP:
             fprintf(stderr, " group voice; group: %i, source: %i ", target_id, source_id);
-            sprintf(metadata, "protocol:DMR;slot:%i;type:group;source:%i;target:%i\n", slot, source_id, target_id);
-            meta_write(&metadata[0]);
+            metadata[slot].type = "group";
+            metadata[slot].source = source_id;
+            metadata[slot].target = target_id;
+            meta_write(slot);
             break;
         case FLC_OPCODE_UNIT_TO_UNIT:
             fprintf(stderr, " direct voice; target: %i, source: %i ", target_id, source_id);
-            sprintf(metadata, "protocol:DMR;slot:%i;type:direct;source:%i;target:%i\n", slot, source_id, target_id);
-            meta_write(&metadata[0]);
+            metadata[slot].type = "direct";
+            metadata[slot].source = source_id;
+            metadata[slot].target = target_id;
+            meta_write(slot);
             break;
         default:
             fprintf(stderr, " unknown flc opcode: %i ", flc_opcode);
@@ -411,7 +447,8 @@ int main(int argc, char** argv) {
                 synctypes[0] = SYNCTYPE_UNKNOWN; synctypes[1] = SYNCTYPE_UNKNOWN;
                 reset_cach_payload();
                 reset_embedded_data(0); reset_embedded_data(1);
-                meta_write("protocol:DMR\n");
+                meta_reset(0); meta_reset(1);
+                meta_write(0); meta_write(1);
                 lastslot = -1;
                 slotstability = 0;
                 break;
@@ -476,15 +513,20 @@ int main(int argc, char** argv) {
             if (synctype != SYNCTYPE_UNKNOWN && synctypes[slot] != synctype) {
                 synctypes[slot] = synctype;
                 // send synctype change over metadata fifo
-                char metadata[255] = "\n";
                 if (synctype == SYNCTYPE_VOICE) {
-                    sprintf(metadata, "protocol:DMR;slot:%i;type:voice\n", slot);
+                    // if it's data, voice is an upgrade.
+                    // it could also already be group or direct, which is already more specific than voice.
+                    if (strcmp("data", metadata[slot].type) == 0) {
+                        metadata[slot].type = "voice";
+                    }
                 } else if (synctype == SYNCTYPE_DATA) {
-                    sprintf(metadata, "protocol:DMR;slot:%i;type:data\n", slot);
+                    metadata[slot].type = "data";
+                    metadata[slot].source = 0;
+                    metadata[slot].target = 0;
                 } else {
-                    sprintf(metadata, "protocol:DMR\n");
+                    meta_reset(slot);
                 }
-                meta_write(&metadata[0]);
+                meta_write(slot);
             }
 
             fprintf(stderr, "  slot: %i busy: %i, lcss: %i", slot, busy, lcss);
@@ -557,8 +599,6 @@ int main(int argc, char** argv) {
                     if (data_type == DATA_TYPE_IDLE) {
                         // NOOP
                     } else if (data_type == DATA_TYPE_VOICE_LC) {
-                        fprintf(stderr, "would now decode voice LC header!\n");
-
                         // deinterleave payload according to ETSI B.1.1 (BPTC196,96)
                         // Interleave Index = Index × 181 modulo 196
 
