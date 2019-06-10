@@ -10,6 +10,8 @@
 #include "dmr/hamming_16_11.h"
 #include "dmr/hamming_7_4.h"
 #include "dmr/golay_20_8.h"
+#include "dmr/hamming_13_9.h"
+#include "dmr/hamming_15_11.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -212,8 +214,29 @@ void copy_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t positio
 #define FLC_OPCODE_GROUP 0
 #define FLC_OPCODE_UNIT_TO_UNIT 3
 
+void decode_lc(uint8_t lc[9], uint8_t slot) {
+    uint8_t flc_opcode = lc[0] & 0b00111111;
+    uint32_t target_id = lc[3] << 16 | lc[4] << 8 | lc[5];
+    uint32_t source_id = lc[6] << 16 | lc[7] << 8 | lc[8];
+    char metadata[255];
+    switch (flc_opcode) {
+        case FLC_OPCODE_GROUP:
+            fprintf(stderr, " group voice; group: %i, source: %i ", target_id, source_id);
+            sprintf(metadata, "protocol:DMR;slot:%i;type:group;source:%i;target:%i\n", slot, source_id, target_id);
+            meta_write(&metadata[0]);
+            break;
+        case FLC_OPCODE_UNIT_TO_UNIT:
+            fprintf(stderr, " direct voice; target: %i, source: %i ", target_id, source_id);
+            sprintf(metadata, "protocol:DMR;slot:%i;type:direct;source:%i;target:%i\n", slot, source_id, target_id);
+            meta_write(&metadata[0]);
+            break;
+        default:
+            fprintf(stderr, " unknown flc opcode: %i ", flc_opcode);
+    }
+}
+
 void decode_embedded_signalling_data(uint8_t slot) {
-    fprintf(stderr, "decoding embedded signalling for slot %i", slot);
+    fprintf(stderr, "decoding embedded signalling for slot %i ", slot);
     int i, k;
     uint16_t decode_matrix[8];
     for (i = 0; i < 16; i++) {
@@ -269,24 +292,7 @@ void decode_embedded_signalling_data(uint8_t slot) {
         return;
     }
 
-    uint8_t flc_opcode = lc[0] & 0b00111111;
-    uint32_t target_id = lc[3] << 16 | lc[4] << 8 | lc[5];
-    uint32_t source_id = lc[6] << 16 | lc[7] << 8 | lc[8];
-    char metadata[255];
-    switch (flc_opcode) {
-        case FLC_OPCODE_GROUP:
-            fprintf(stderr, " group voice; group: %i, source: %i ", target_id, source_id);
-            sprintf(metadata, "protocol:DMR;slot:%i;type:group;source:%i;target:%i\n", slot, source_id, target_id);
-            meta_write(&metadata[0]);
-            break;
-        case FLC_OPCODE_UNIT_TO_UNIT:
-            fprintf(stderr, " direct voice; target: %i, source: %i ", target_id, source_id);
-            sprintf(metadata, "protocol:DMR;slot:%i;type:direct;source:%i;target:%i\n", slot, source_id, target_id);
-            meta_write(&metadata[0]);
-            break;
-        default:
-            fprintf(stderr, " unknown flc opcode: %i ", flc_opcode);
-    }
+    decode_lc(lc, slot);
 }
 
 void collect_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t lcss) {
@@ -449,7 +455,7 @@ int main(int argc, char** argv) {
                         fprintf(stderr, "slot overridden to %i (slotstability = %i)\n", slot, slotstability);
                         slotstability = 0;
                     } else if (lastslot != -1) {
-                        fprintf(stderr, "slot override denied to to slot stability = %i", slotstability);
+                        fprintf(stderr, "slot override denied, stability = %i", slotstability);
                         slot = next;
                     }
                 } else {
@@ -499,21 +505,21 @@ int main(int argc, char** argv) {
             
             collect_cach_payload(cach_payload, lcss);
 
-            // extract payload data
-            uint8_t payload[27] = {0};
-            // first half
-            int payload_start = ringbuffer_read_pos - 54;
-            for (k = 0; k < 54; k++) {
-                payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
-            }
-
-            // second half
-            payload_start = ringbuffer_read_pos + SYNC_SIZE;
-            for (k = 0; k < 54; k++) {
-                payload[(k + 54) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 54) % 4));
-            }
-
             if (synctypes[slot] == SYNCTYPE_VOICE) {
+                // extract payload data
+                uint8_t payload[27] = {0};
+                // first half
+                int payload_start = ringbuffer_read_pos - 54;
+                for (k = 0; k < 54; k++) {
+                    payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
+                }
+
+                // second half
+                payload_start = ringbuffer_read_pos + SYNC_SIZE;
+                for (k = 0; k < 54; k++) {
+                    payload[(k + 54) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 54) % 4));
+                }
+
                 uint8_t deinterleaved[36];
                 deinterleave_voice_payload(payload, deinterleaved);
                 fwrite(deinterleaved, 1, 36, stdout);
@@ -534,13 +540,81 @@ int main(int argc, char** argv) {
                     uint8_t cc = (slot_type >> 16) & 0x0F;
                     uint8_t data_type = (slot_type >> 12) & 0x0F;
 
+                    // extract payload data
+                    uint8_t payload[25] = {0};
+                    // first half
+                    int payload_start = ringbuffer_read_pos - 54;
+                    for (k = 0; k < 49; k++) {
+                        payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
+                    }
+
+                    // second half
+                    payload_start = ringbuffer_read_pos + SYNC_SIZE + 5;
+                    for (k = 0; k < 49; k++) {
+                        payload[(k + 49) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 49) % 4));
+                    }
+
                     if (data_type == DATA_TYPE_IDLE) {
                         // NOOP
                     } else if (data_type == DATA_TYPE_VOICE_LC) {
                         fprintf(stderr, "would now decode voice LC header!\n");
+
+                        // deinterleave payload according to ETSI B.1.1 (BPTC196,96)
+                        // Interleave Index = Index × 181 modulo 196
+
+                        uint8_t payload_deinterleaved[25] = { 0 };
+                        for (i = 0; i < 196; i++) {
+                            uint8_t source_index = (i * 181) % 196;
+                            payload_deinterleaved[i / 8] |= ((payload[source_index / 8] >> (7 - (source_index % 8))) & 1) << 7 - (i % 8);
+                        }
+
+                        // pivot the whole matrix in order to apply the column FEC
+                        uint16_t payload_pivoted[15] = { 0 };
+                        bool hamming_result = true;
+                        for (i = 0; i < 15; i++) {
+                            for (k = 0; k < 13; k++) {
+                                uint8_t source_index = k * 15 + i;
+                                payload_pivoted[i] |= ((payload_deinterleaved[source_index / 8] >> (7 - (source_index % 8))) & 1) << (13 - k);
+                            }
+                            hamming_result &= hamming_13_9(&payload_pivoted[i]);
+                        }
+
+                        if (hamming_result) {
+                            // pivot back in order to apply row FEC (we can already drop the final rows at this point)
+                            uint16_t payload_rows[9] = { 0 };
+
+                            for (i = 0; i < 9; i++) {
+                                for (k = 0; k < 15; k++) {
+                                    payload_rows[i] |= ((payload_pivoted[k] >> (13 - i)) & 1) << (15 - k);
+                                }
+                                hamming_result &= hamming_15_11(&payload_rows[i]);
+                            }
+
+                            if (hamming_result) {
+                                // TODO CRC checksum is in the last 24 bits
+                                uint8_t lc[9] = {
+                                     (payload_rows[0] & 0b000111111110000) >> 4,
+                                     (payload_rows[1] & 0b111111110000000) >> 7,
+                                    ((payload_rows[1] & 0b000000001110000) << 1) | ((payload_rows[2] & 0b111110000000000) >> 10),
+                                    ((payload_rows[2] & 0b000001111110000) >> 2) | ((payload_rows[3] & 0b110000000000000) >> 13),
+                                     (payload_rows[3] & 0b001111111100000) >> 5,
+                                    ((payload_rows[3] & 0b000000000010000) << 3) | ((payload_rows[4] & 0b111111100000000) >> 8),
+                                     (payload_rows[4] & 0b000000011110000)       | ((payload_rows[5] & 0b111100000000000) >> 11),
+                                    ((payload_rows[5] & 0b000011111110000) >> 3) | ((payload_rows[6] & 0b100000000000000) >> 14),
+                                     (payload_rows[6] & 0b011111111000000) >> 6
+                                };
+
+                                decode_lc(lc, slot);
+                            } else {
+                                fprintf(stderr, "data frame: column hamming 15,11 failure\n");
+                            }
+                        } else {
+                            fprintf(stderr, "data frame: column hamming 13,9 failure\n");
+                        }
+
                     }
                 } else {
-                    fprintf(stderr, "data frame golay failure\n");
+                    fprintf(stderr, "data frame: golay failure\n");
                 }
 
             }
