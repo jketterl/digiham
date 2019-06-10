@@ -9,6 +9,7 @@
 #include "dmr/quadratic_residue.h"
 #include "dmr/hamming_16_11.h"
 #include "dmr/hamming_7_4.h"
+#include "dmr/golay_20_8.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -30,6 +31,21 @@ uint8_t dmr_bs_data_sync[] =  { 3,1,3,3,3,3,1,1,1,3,3,1,1,3,1,1,3,1,3,3,1,1,3,1 
 uint8_t dmr_bs_voice_sync[] = { 1,3,1,1,1,1,3,3,3,1,1,3,3,1,3,3,1,3,1,1,3,3,1,3 };
 uint8_t dmr_ms_data_sync[] =  { 3,1,1,1,3,1,1,3,3,3,1,3,1,3,3,3,3,1,1,3,1,1,1,3 };
 uint8_t dmr_ms_voice_sync[] = { 1,3,3,3,1,3,3,1,1,1,3,1,3,1,1,1,1,3,3,1,3,3,3,1 };
+
+// data types according to ETSI 9.3.6
+#define DATA_TYPE_PI 0
+#define DATA_TYPE_VOICE_LC 1
+#define DATA_TYPE_TERMINATOR_LC 2
+#define DATA_TYPE_CSBK 3
+#define DATA_TYPE_MBC 4
+#define DATA_TYPE_MBC_CONTINUATION 5
+#define DATA_TYPE_DATA_HEADER 6
+#define DATA_TYPE_RATE_1_2_DATA 7
+#define DATA_TYPE_RATE_3_4_DATA 8
+#define DATA_TYPE_IDLE 9
+#define DATA_TYPE_RATE_1_DATA 10
+#define DATA_TYPE_UNIFIED_SINGLE_BLOCK_DATA 11
+// the remainder is reserved, leaving them out for now
 
 
 FILE *meta_fifo = NULL;
@@ -502,6 +518,31 @@ int main(int argc, char** argv) {
                 deinterleave_voice_payload(payload, deinterleaved);
                 fwrite(deinterleaved, 1, 36, stdout);
                 fflush(stdout);
+            } else if (synctypes[slot] == SYNCTYPE_DATA) {
+                uint32_t slot_type = 0;
+                for (i = 0; i < 5; i++) {
+                    uint8_t dibit = ringbuffer[(ringbuffer_read_pos - 5 + i) % RINGBUFFER_SIZE];
+                    slot_type = slot_type << 2 | (dibit & 0b00000011);
+                }
+
+                for (i = 0; i < 5; i++) {
+                    uint8_t dibit = ringbuffer[(ringbuffer_read_pos + SYNC_SIZE + i) % RINGBUFFER_SIZE];
+                    slot_type = slot_type << 2 | (dibit & 0b00000011);
+                }
+
+                if (golay_20_8(&slot_type)) {
+                    uint8_t cc = (slot_type >> 16) & 0x0F;
+                    uint8_t data_type = (slot_type >> 12) & 0x0F;
+
+                    if (data_type == DATA_TYPE_IDLE) {
+                        // NOOP
+                    } else if (data_type == DATA_TYPE_VOICE_LC) {
+                        fprintf(stderr, "would now decode voice LC header!\n");
+                    }
+                } else {
+                    fprintf(stderr, "data frame golay failure\n");
+                }
+
             }
 
             // advance to the next frame. as long as we have sync, we know where the next frame begins
