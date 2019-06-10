@@ -411,7 +411,7 @@ int main(int argc, char** argv) {
                 synctypes[0] = SYNCTYPE_UNKNOWN; synctypes[1] = SYNCTYPE_UNKNOWN;
                 reset_cach_payload();
                 reset_embedded_data(0); reset_embedded_data(1);
-                meta_write("\n");
+                meta_write("protocol:DMR\n");
                 lastslot = -1;
                 slotstability = 0;
                 break;
