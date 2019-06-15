@@ -361,14 +361,27 @@ void collect_embedded_data(uint8_t embedded_data[16], uint8_t slot, uint8_t lcss
     }
 }
 
+void print_usage() {
+    fprintf(stderr,
+        "dmr_decoder version %s\n\n"
+        "Usage: dmr_decoder [options]\n\n"
+        "Available options:\n"
+        " -h, --help      show this message\n"
+        " -f, --fifo      send metadata to this file\n"
+        " -v, --version   print version and exit\n",
+        VERSION
+    );
+}
+
 int main(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
+        {"help", no_argument, NULL, 'h'},
         {"fifo", required_argument, NULL, 'f'},
         {"version", no_argument, NULL, 'v'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "f:v", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "hf:v", long_options, NULL)) != -1) {
         switch (c) {
             case 'f':
                 fprintf(stderr, "meta fifo: %s\n", optarg);
@@ -376,6 +389,10 @@ int main(int argc, char** argv) {
                 break;
             case 'v':
                 print_version();
+                return 0;
+                break;
+            case 'h':
+                print_usage();
                 return 0;
         }
     }
