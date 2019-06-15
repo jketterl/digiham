@@ -47,14 +47,28 @@ float float_buf[BUF_SIZE];
 int r = 0;
 bool use_float = false;
 
+void print_usage() {
+    fprintf(stderr,
+        "digitalvoice_filter version %s\n\n"
+        "Usage: digitalvoice_filter [options]\n\n"
+        "Available options:\n"
+        " -h, --help      show this message\n"
+        " -f, --float     use 32-bit float in and out (without this flag: 16-bit signed integer)\n"
+        " -v, --version   print version and exit\n",
+        VERSION
+    );
+}
+
+
 int main(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
         {"float", no_argument, NULL, 'f'},
         {"version", no_argument, NULL, 'v'},
+        {"help", no_argument, NULL, 'h'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "fv", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "hfv", long_options, NULL)) != -1) {
         switch (c) {
             case 'f':
                 fprintf(stderr, "digitalvoice_filter: switching to floating point operation\n");
@@ -62,6 +76,9 @@ int main(int argc, char** argv) {
                 break;
             case 'v':
                 print_version();
+                return 0;
+            case 'h':
+                print_usage();
                 return 0;
         }
     }

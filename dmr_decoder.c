@@ -390,7 +390,6 @@ int main(int argc, char** argv) {
             case 'v':
                 print_version();
                 return 0;
-                break;
             case 'h':
                 print_usage();
                 return 0;
