@@ -38,6 +38,7 @@ target_include_directories (dmr_hamming_13_9 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(rrc_filter rrc_filter.c)
 add_executable(dc_block dc_block.c)
+target_link_libraries(dc_block version)
 add_executable(gfsk_demodulator gfsk_demodulator.c)
 add_executable(dmr_decoder dmr_decoder.c)
 target_link_libraries(dmr_decoder version dmr_quadratic_residue dmr_hamming_16_11 dmr_hamming_7_4 dmr_golay_20_8 dmr_hamming_15_11 dmr_hamming_13_9)
