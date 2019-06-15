@@ -4,6 +4,8 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <getopt.h>
+#include "version.h"
 
 #define RINGBUFFER_SIZE 1024
 #define READ_SIZE 256
@@ -51,7 +53,35 @@ int ringbuffer_bytes() {
     return mod(ringbuffer_write_pos - ringbuffer_read_pos, RINGBUFFER_SIZE);
 }
 
-int main() {
+void print_usage() {
+    fprintf(stderr,
+        "gfsk_demodulator version %s\n\n"
+        "Usage: gfsk_demodulator [options]\n\n"
+        "Available options:\n"
+        " -h, --help      show this message\n"
+        " -v, --version   print version and exit\n",
+        VERSION
+    );
+}
+
+int main(int argc, char** argv) {
+    int c;
+    static struct option long_options[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"version", no_argument, NULL, 'v'},
+        { NULL, 0, NULL, 0 }
+    };
+    while ((c = getopt_long(argc, argv, "hv", long_options, NULL)) != -1) {
+        switch (c) {
+            case 'v':
+                print_version();
+                return 0;
+            case 'h':
+                print_usage();
+                return 0;
+        }
+    }
+
     int r = 0;
     while ((r = fread(buf, 4, READ_SIZE, stdin)) > 0) {
 
