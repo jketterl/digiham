@@ -177,14 +177,27 @@ void deinterleave_voice_payload(uint8_t payload[9], uint8_t result[12]) {
     }
 }
 
+void print_usage() {
+    fprintf(stderr,
+        "ysf_decoder version %s\n\n"
+        "Usage: ysf_decoder [options]\n\n"
+        "Available options:\n"
+        " -h, --help      show this message\n"
+        " -f, --fifo      send metadata to this file\n"
+        " -v, --version   print version and exit\n",
+        VERSION
+    );
+}
+
 int main(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
         {"fifo", required_argument, NULL, 'f'},
         {"version", no_argument, NULL, 'v'},
+        {"help", no_argument, NULL, 'h'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "f:v", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "f:vh", long_options, NULL)) != -1) {
         switch (c) {
             case 'f':
                 fprintf(stderr, "meta fifo: %s\n", optarg);
@@ -192,6 +205,9 @@ int main(int argc, char** argv) {
                 break;
             case 'v':
                 print_version();
+                return 0;
+            case 'h':
+                print_usage();
                 return 0;
         }
     }
