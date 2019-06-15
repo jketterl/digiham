@@ -7,6 +7,20 @@
 #include <stdbool.h>
 #include "version.h"
 
+void print_usage() {
+    fprintf(stderr,
+        "mbe_synthesizer version %s\n\n"
+        "Usage: mbe_synthesizer [options]\n\n"
+        "Available options:\n"
+        " -h, --help              show this message\n"
+        " -v, --version           print version and exit\n"
+        " -u, --unvoiced-quality  set mbelib unvoide quality level (higher values require more cpu; default: 1)\n"
+        " -y, --yaesu             activate YSF mode (allows in-stream switching of different mbe codecs)\n"
+        " -f, --float             output 32-bit floating-point samples (default: 16-bit signed integer)\n",
+        VERSION
+    );
+}
+
 int main(int argc, char** argv) {
     bool yaesu = false;
     bool use_float = false;
@@ -19,9 +33,10 @@ int main(int argc, char** argv) {
         {"unvoiced-quality", required_argument, NULL, 'u'},
         {"version", no_argument, NULL, 'v'},
         {"float", no_argument, NULL, 'f'},
+        {"help", no_argument, NULL, 'h'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yu:vf", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yu:vfh", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 fprintf(stderr, "enabling codec switching support for yaesu\n");
@@ -37,6 +52,9 @@ int main(int argc, char** argv) {
                 break;
             case 'v':
                 print_version();
+                return 0;
+            case 'h':
+                print_usage();
                 return 0;
         }
     }
