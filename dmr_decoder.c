@@ -71,11 +71,11 @@ void meta_write(uint8_t slot) {
     char builder[255];
 
     sprintf(meta_string, "protocol:DMR;slot:%i;", slot);
-    if (strlen(meta->sync) > 0) {
+    if (meta->sync != NULL && strlen(meta->sync) > 0) {
         sprintf(builder, "sync:%s;", meta->sync);
         strcat(meta_string, builder);
     }
-    if (strlen(meta->type) > 0) {
+    if (meta->type != NULL && strlen(meta->type) > 0) {
         sprintf(builder, "type:%s;", meta->type);
         strcat(meta_string, builder);
     }
