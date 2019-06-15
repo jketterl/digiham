@@ -53,6 +53,7 @@ uint8_t dmr_ms_voice_sync[] = { 1,3,3,3,1,3,3,1,1,1,3,1,3,1,1,1,1,3,3,1,3,3,3,1 
 FILE *meta_fifo = NULL;
 
 typedef struct {
+    char* sync;
     char* type;
     uint32_t source;
     uint32_t target;
@@ -67,6 +68,10 @@ void meta_write(uint8_t slot) {
     char builder[255];
 
     sprintf(meta_string, "protocol:DMR;slot:%i;", slot);
+    if (strlen(meta->sync) > 0) {
+        sprintf(builder, "sync:%s;", meta->sync);
+        strcat(meta_string, builder);
+    }
     if (strlen(meta->type) > 0) {
         sprintf(builder, "type:%s;", meta->type);
         strcat(meta_string, builder);
@@ -86,6 +91,7 @@ void meta_write(uint8_t slot) {
 
 void meta_reset(uint8_t slot) {
     meta_struct* meta = &metadata[slot];
+    meta->sync = "";
     meta->type = "";
     meta->source = 0;
     meta->target = 0;
@@ -514,15 +520,13 @@ int main(int argc, char** argv) {
                 synctypes[slot] = synctype;
                 // send synctype change over metadata fifo
                 if (synctype == SYNCTYPE_VOICE) {
-                    // if it's data, voice is an upgrade.
-                    // it could also already be group or direct, which is already more specific than voice.
-                    if (strcmp("data", metadata[slot].type) == 0) {
-                        metadata[slot].type = "voice";
-                    }
+                    metadata[slot].sync = "voice";
                 } else if (synctype == SYNCTYPE_DATA) {
-                    metadata[slot].type = "data";
-                    metadata[slot].source = 0;
-                    metadata[slot].target = 0;
+                    meta_struct* meta = &metadata[slot];
+                    meta->sync = "data";
+                    meta->type = "";
+                    meta->source = 0;
+                    meta->target = 0;
                 } else {
                     meta_reset(slot);
                 }
@@ -652,6 +656,17 @@ int main(int argc, char** argv) {
                             fprintf(stderr, "data frame: column hamming 13,9 failure\n");
                         }
 
+                    } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
+                        meta_struct* meta = &metadata[slot];
+                        if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
+                            meta->type = "";
+                            meta->source = 0;
+                            meta->target = 0;
+                            meta_write(slot);
+                        }
+
+                    } else {
+                        fprintf(stderr, "unhandled data_type: %i\n", data_type);
                     }
                 } else {
                     fprintf(stderr, "data frame: golay failure\n");
