@@ -686,7 +686,7 @@ int main(int argc, char** argv) {
 
                                 decode_lc(lc, slot);
                             } else {
-                                fprintf(stderr, "data frame: column hamming 15,11 failure\n");
+                                fprintf(stderr, "data frame: row hamming 15,11 failure\n");
                             }
                         } else {
                             fprintf(stderr, "data frame: column hamming 13,9 failure\n");
