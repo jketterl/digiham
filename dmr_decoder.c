@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include "dmr/bitmappings.h"
 #include "version.h"
 #include "dmr/quadratic_residue.h"
@@ -51,6 +53,7 @@ uint8_t dmr_ms_voice_sync[] = { 1,3,3,3,1,3,3,1,1,1,3,1,3,1,1,1,1,3,3,1,3,3,3,1 
 
 
 FILE *meta_fifo = NULL;
+FILE *control_fifo = NULL;
 
 typedef struct {
     char* sync;
@@ -366,9 +369,10 @@ void print_usage() {
         "dmr_decoder version %s\n\n"
         "Usage: dmr_decoder [options]\n\n"
         "Available options:\n"
-        " -h, --help      show this message\n"
-        " -f, --fifo      send metadata to this file\n"
-        " -v, --version   print version and exit\n",
+        " -h, --help          show this message\n"
+        " -f, --fifo          send metadata to this file\n"
+        " -c, --control-fifo  read control messages from this file\n"
+        " -v, --version       print version and exit\n",
         VERSION
     );
 }
@@ -379,13 +383,20 @@ int main(int argc, char** argv) {
         {"help", no_argument, NULL, 'h'},
         {"fifo", required_argument, NULL, 'f'},
         {"version", no_argument, NULL, 'v'},
+        {"control-fifo", required_argument, NULL, 'c'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "hf:v", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "hf:vc:", long_options, NULL)) != -1) {
         switch (c) {
             case 'f':
                 fprintf(stderr, "meta fifo: %s\n", optarg);
                 meta_fifo = fopen(optarg, "w");
+                break;
+            case 'c':
+                fprintf(stderr, "control fifo: %s\n", optarg);
+                control_fifo = fopen(optarg, "r");
+                int flags = fcntl(fileno(control_fifo), F_GETFL, 0);
+                fcntl(fileno(control_fifo), F_SETFL, flags | O_NONBLOCK);
                 break;
             case 'v':
                 print_version();
@@ -401,6 +412,12 @@ int main(int argc, char** argv) {
     int sync_missing = 0;
     int lastslot = -1;
     signed int slotstability = 0;
+    uint8_t slot_filter = 3;
+
+    char * control_line;
+    size_t control_bufsize = 32;
+    control_line = (char *) malloc(control_bufsize * sizeof(char));
+
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
@@ -568,24 +585,27 @@ int main(int argc, char** argv) {
             collect_cach_payload(cach_payload, lcss);
 
             if (synctypes[slot] == SYNCTYPE_VOICE) {
-                // extract payload data
-                uint8_t payload[27] = {0};
-                // first half
-                int payload_start = ringbuffer_read_pos - 54;
-                for (k = 0; k < 54; k++) {
-                    payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
-                }
+                // don't output anything if the slot is muted
+                if ((slot + 1) & slot_filter) {
+                    // extract payload data
+                    uint8_t payload[27] = {0};
+                    // first half
+                    int payload_start = ringbuffer_read_pos - 54;
+                    for (k = 0; k < 54; k++) {
+                        payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
+                    }
 
-                // second half
-                payload_start = ringbuffer_read_pos + SYNC_SIZE;
-                for (k = 0; k < 54; k++) {
-                    payload[(k + 54) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 54) % 4));
-                }
+                    // second half
+                    payload_start = ringbuffer_read_pos + SYNC_SIZE;
+                    for (k = 0; k < 54; k++) {
+                        payload[(k + 54) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 54) % 4));
+                    }
 
-                uint8_t deinterleaved[36];
-                deinterleave_voice_payload(payload, deinterleaved);
-                fwrite(deinterleaved, 1, 36, stdout);
-                fflush(stdout);
+                    uint8_t deinterleaved[36];
+                    deinterleave_voice_payload(payload, deinterleaved);
+                    fwrite(deinterleaved, 1, 36, stdout);
+                    fflush(stdout);
+                }
             } else if (synctypes[slot] == SYNCTYPE_DATA) {
                 uint32_t slot_type = 0;
                 for (i = 0; i < 5; i++) {
@@ -693,7 +713,18 @@ int main(int argc, char** argv) {
             // advance to the next frame. as long as we have sync, we know where the next frame begins
             ringbuffer_read_pos = mod(ringbuffer_read_pos + 144, RINGBUFFER_SIZE);
         }
+
+        if (control_fifo != NULL) {
+            ssize_t read;
+            while ((read = fread(control_line, sizeof(char), control_bufsize, control_fifo)) >= 2) {
+                if (control_line[1] == '\n') {
+                    slot_filter = control_line[0] - '0';
+                }
+            }
+        }
     }
+
+    free(control_line);
 
     return 0;
 }
