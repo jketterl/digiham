@@ -622,30 +622,32 @@ int main(int argc, char** argv) {
                     uint8_t cc = (slot_type >> 16) & 0x0F;
                     uint8_t data_type = (slot_type >> 12) & 0x0F;
 
-                    // extract payload data
-                    uint8_t payload[25] = {0};
-                    // first half
-                    int payload_start = ringbuffer_read_pos - 54;
-                    for (k = 0; k < 49; k++) {
-                        payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
-                    }
+                    // according to ETSI 6.2, rate 3/4 data is the only kind of data that doesn't use the BPTC(196,96) FEC
+                    if (data_type == DATA_TYPE_RATE_3_4_DATA) {
+                        // not decoded
+                    } else {
 
-                    // second half
-                    payload_start = ringbuffer_read_pos + SYNC_SIZE + 5;
-                    for (k = 0; k < 49; k++) {
-                        payload[(k + 49) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 49) % 4));
-                    }
+                        // extract payload data
+                        uint8_t payload[25] = { 0 };
+                        // first half
+                        int payload_start = ringbuffer_read_pos - 54;
+                        for (k = 0; k < 49; k++) {
+                            payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
+                        }
 
-                    if (data_type == DATA_TYPE_IDLE) {
-                        // NOOP
-                    } else if (data_type == DATA_TYPE_VOICE_LC) {
+                        // second half
+                        payload_start = ringbuffer_read_pos + SYNC_SIZE + 5;
+                        for (k = 0; k < 49; k++) {
+                            payload[(k + 49) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * ((k + 49) % 4));
+                        }
+
                         // deinterleave payload according to ETSI B.1.1 (BPTC196,96)
                         // Interleave Index = Index × 181 modulo 196
 
                         uint8_t payload_deinterleaved[25] = { 0 };
                         for (i = 0; i < 196; i++) {
                             uint8_t source_index = (i * 181) % 196;
-                            payload_deinterleaved[i / 8] |= ((payload[source_index / 8] >> (7 - (source_index % 8))) & 1) << 7 - (i % 8);
+                            payload_deinterleaved[i / 8] |= ((payload[source_index / 8] >> (7 - (source_index % 8))) & 1) << (7 - (i % 8));
                         }
 
                         // pivot the whole matrix in order to apply the column FEC
@@ -653,8 +655,10 @@ int main(int argc, char** argv) {
                         bool hamming_result = true;
                         for (i = 0; i < 15; i++) {
                             for (k = 0; k < 13; k++) {
-                                uint8_t source_index = k * 15 + i;
-                                payload_pivoted[i] |= ((payload_deinterleaved[source_index / 8] >> (7 - (source_index % 8))) & 1) << (13 - k);
+                                // there's only 195 bits in the matrix, but we received 196, that's fixed by the +1
+                                // that stupid R(3) bit has cost me lots of time
+                                uint8_t source_index = k * 15 + i + 1;
+                                payload_pivoted[i] |= ((payload_deinterleaved[source_index / 8] >> (7 - (source_index % 8))) & 1) << (12 - k);
                             }
                             hamming_result &= hamming_13_9(&payload_pivoted[i]);
                         }
@@ -665,7 +669,7 @@ int main(int argc, char** argv) {
 
                             for (i = 0; i < 9; i++) {
                                 for (k = 0; k < 15; k++) {
-                                    payload_rows[i] |= ((payload_pivoted[k] >> (13 - i)) & 1) << (15 - k);
+                                    payload_rows[i] |= ((payload_pivoted[k] >> (12 - i)) & 1) << (14 - k);
                                 }
                                 hamming_result &= hamming_15_11(&payload_rows[i]);
                             }
@@ -682,30 +686,34 @@ int main(int argc, char** argv) {
                                      (payload_rows[4] & 0b000000011110000)       | ((payload_rows[5] & 0b111100000000000) >> 11),
                                     ((payload_rows[5] & 0b000011111110000) >> 3) | ((payload_rows[6] & 0b100000000000000) >> 14),
                                      (payload_rows[6] & 0b011111111000000) >> 6
+                                    //((payload_rows[6] & 0b000000000110000) << 2) | ((payload_rows[7] & 0b111111000000000) >> 9),
+                                    //((payload_rows[7] & 0b000000111110000) >> 1) | ((payload_rows[8] & 0b111000000000000) >> 12),
+                                    //((payload_rows[8] & 0b000111111110000) >> 4)
                                 };
 
-                                decode_lc(lc, slot);
+                                if (data_type == DATA_TYPE_VOICE_LC) {
+                                    decode_lc(lc, slot);
+                                } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
+                                    meta_struct* meta = &metadata[slot];
+                                    if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
+                                        meta->type = "";
+                                        meta->source = 0;
+                                        meta->target = 0;
+                                        meta_write(slot);
+                                    }
+                                } else {
+                                    fprintf(stderr, "unhandled data_type: %i\n", data_type);
+                                }
                             } else {
-                                fprintf(stderr, "data frame: row hamming 15,11 failure\n");
+                                fprintf(stderr, "data frame: row hamming 15,11 failure (data_type = %i, slot = %i)\n", data_type, slot);
                             }
                         } else {
-                            fprintf(stderr, "data frame: column hamming 13,9 failure\n");
+                            fprintf(stderr, "data frame: column hamming 13,9 failure (data_type = %i, slot = %i)\n", data_type, slot);
                         }
 
-                    } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
-                        meta_struct* meta = &metadata[slot];
-                        if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
-                            meta->type = "";
-                            meta->source = 0;
-                            meta->target = 0;
-                            meta_write(slot);
-                        }
-
-                    } else {
-                        fprintf(stderr, "unhandled data_type: %i\n", data_type);
                     }
                 } else {
-                    fprintf(stderr, "data frame: golay failure\n");
+                    fprintf(stderr, "slot type PDU: golay failure\n");
                 }
 
             }
