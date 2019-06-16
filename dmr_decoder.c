@@ -528,20 +528,16 @@ int main(int argc, char** argv) {
             if (tact_correct) {
                 if (slot != next) {
                     if (slotstability < 5) {
-                        fprintf(stderr, "slot overridden to %i (slotstability = %i)\n", slot, slotstability);
                         slotstability = 0;
                     } else if (lastslot != -1) {
-                        fprintf(stderr, "slot override denied, stability = %i", slotstability);
                         slot = next;
                     }
                 } else {
-                    //fprintf(stderr, "stability + %i\n", slotstability);
                     slotstability += 1;
                     if (slotstability > 100) slotstability = 100;
                 }
             } else if (lastslot != -1) {
                 if (next != slot) {
-                    //fprintf(stderr, "stability - %i\n", slotstability);
                     slotstability -= 1;
                     if (slotstability < -100) slotstability = -100;
                 }
@@ -705,15 +701,15 @@ int main(int argc, char** argv) {
                                     fprintf(stderr, "unhandled data_type: %i\n", data_type);
                                 }
                             } else {
-                                fprintf(stderr, "data frame: row hamming 15,11 failure (data_type = %i, slot = %i)\n", data_type, slot);
+                                //fprintf(stderr, "data frame: row hamming 15,11 failure (data_type = %i, slot = %i)\n", data_type, slot);
                             }
                         } else {
-                            fprintf(stderr, "data frame: column hamming 13,9 failure (data_type = %i, slot = %i)\n", data_type, slot);
+                            //fprintf(stderr, "data frame: column hamming 13,9 failure (data_type = %i, slot = %i)\n", data_type, slot);
                         }
 
                     }
                 } else {
-                    fprintf(stderr, "slot type PDU: golay failure\n");
+                    //fprintf(stderr, "slot type PDU: golay failure\n");
                 }
 
             }
