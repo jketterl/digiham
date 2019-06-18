@@ -14,6 +14,7 @@
 #include "dmr/golay_20_8.h"
 #include "dmr/hamming_13_9.h"
 #include "dmr/hamming_15_11.h"
+#include "dmr/bptc_196_96.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -621,6 +622,7 @@ int main(int argc, char** argv) {
                     // according to ETSI 6.2, rate 3/4 data is the only kind of data that doesn't use the BPTC(196,96) FEC
                     if (data_type == DATA_TYPE_RATE_3_4_DATA) {
                         // not decoded
+                        fprintf(stderr, "skipping 3/4 data frame\n");
                     } else {
 
                         // extract payload data
@@ -637,74 +639,24 @@ int main(int argc, char** argv) {
                             payload[(k + 49) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * ((k + 49) % 4));
                         }
 
-                        // deinterleave payload according to ETSI B.1.1 (BPTC196,96)
-                        // Interleave Index = Index × 181 modulo 196
-
-                        uint8_t payload_deinterleaved[25] = { 0 };
-                        for (i = 0; i < 196; i++) {
-                            uint8_t source_index = (i * 181) % 196;
-                            payload_deinterleaved[i / 8] |= ((payload[source_index / 8] >> (7 - (source_index % 8))) & 1) << (7 - (i % 8));
-                        }
-
-                        // pivot the whole matrix in order to apply the column FEC
-                        uint16_t payload_pivoted[15] = { 0 };
-                        bool hamming_result = true;
-                        for (i = 0; i < 15; i++) {
-                            for (k = 0; k < 13; k++) {
-                                // there's only 195 bits in the matrix, but we received 196, that's fixed by the +1
-                                // that stupid R(3) bit has cost me lots of time
-                                uint8_t source_index = k * 15 + i + 1;
-                                payload_pivoted[i] |= ((payload_deinterleaved[source_index / 8] >> (7 - (source_index % 8))) & 1) << (12 - k);
-                            }
-                            hamming_result &= hamming_13_9(&payload_pivoted[i]);
-                        }
-
-                        if (hamming_result) {
-                            // pivot back in order to apply row FEC (we can already drop the final rows at this point)
-                            uint16_t payload_rows[9] = { 0 };
-
-                            for (i = 0; i < 9; i++) {
-                                for (k = 0; k < 15; k++) {
-                                    payload_rows[i] |= ((payload_pivoted[k] >> (12 - i)) & 1) << (14 - k);
+                        uint8_t lc[12] = { 0 };
+                        if (bptc_196_96(&payload[0], &lc[0])) {
+                            if (data_type == DATA_TYPE_VOICE_LC) {
+                                decode_lc(lc, slot);
+                            } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
+                                meta_struct* meta = &metadata[slot];
+                                if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
+                                    meta->type = "";
+                                    meta->source = 0;
+                                    meta->target = 0;
+                                    meta_write(slot);
                                 }
-                                hamming_result &= hamming_15_11(&payload_rows[i]);
-                            }
-
-                            if (hamming_result) {
-                                // TODO CRC checksum is in the last 24 bits
-                                uint8_t lc[9] = {
-                                     (payload_rows[0] & 0b000111111110000) >> 4,
-                                     (payload_rows[1] & 0b111111110000000) >> 7,
-                                    ((payload_rows[1] & 0b000000001110000) << 1) | ((payload_rows[2] & 0b111110000000000) >> 10),
-                                    ((payload_rows[2] & 0b000001111110000) >> 2) | ((payload_rows[3] & 0b110000000000000) >> 13),
-                                     (payload_rows[3] & 0b001111111100000) >> 5,
-                                    ((payload_rows[3] & 0b000000000010000) << 3) | ((payload_rows[4] & 0b111111100000000) >> 8),
-                                     (payload_rows[4] & 0b000000011110000)       | ((payload_rows[5] & 0b111100000000000) >> 11),
-                                    ((payload_rows[5] & 0b000011111110000) >> 3) | ((payload_rows[6] & 0b100000000000000) >> 14),
-                                     (payload_rows[6] & 0b011111111000000) >> 6
-                                    //((payload_rows[6] & 0b000000000110000) << 2) | ((payload_rows[7] & 0b111111000000000) >> 9),
-                                    //((payload_rows[7] & 0b000000111110000) >> 1) | ((payload_rows[8] & 0b111000000000000) >> 12),
-                                    //((payload_rows[8] & 0b000111111110000) >> 4)
-                                };
-
-                                if (data_type == DATA_TYPE_VOICE_LC) {
-                                    decode_lc(lc, slot);
-                                } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
-                                    meta_struct* meta = &metadata[slot];
-                                    if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
-                                        meta->type = "";
-                                        meta->source = 0;
-                                        meta->target = 0;
-                                        meta_write(slot);
-                                    }
-                                } else {
-                                    fprintf(stderr, "unhandled data_type: %i\n", data_type);
-                                }
+                            } else if (data_type == DATA_TYPE_DATA_HEADER || data_type == DATA_TYPE_RATE_1_2_DATA) {
+                                fprintf(stderr, "raw data (data_type = %i, slot = %i)\n", data_type, slot);
+                                DumpHex(&lc, 13);
                             } else {
-                                //fprintf(stderr, "data frame: row hamming 15,11 failure (data_type = %i, slot = %i)\n", data_type, slot);
+                                fprintf(stderr, "unhandled data_type: %i\n", data_type);
                             }
-                        } else {
-                            //fprintf(stderr, "data frame: column hamming 13,9 failure (data_type = %i, slot = %i)\n", data_type, slot);
                         }
 
                     }
