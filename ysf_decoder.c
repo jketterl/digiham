@@ -15,6 +15,7 @@
 #include "ysf/commands.h"
 #include "ysf/radio_types.h"
 #include "ysf/gps.h"
+#include "ysf/radio_types.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -54,6 +55,7 @@ typedef struct {
     char rem3[5];
     char rem4[5];
     coordinate* location;
+    char* radio;
 } call_data;
 
 void reset_call(call_data* call) {
@@ -68,6 +70,7 @@ void reset_call(call_data* call) {
     memset(&call->rem4[0], 0, 5);
     if (call->location != NULL) free(call->location);
     call->location = NULL;
+    call->radio = NULL;
 }
 
 void meta_send_call(call_data* call) {
@@ -96,6 +99,10 @@ void meta_send_call(call_data* call) {
     }
     if (call->location != NULL) {
         sprintf(builder, "lat:%.6f;lon:%.6f;", call->location->lat, call->location->lon);
+        strcat(meta_string, builder);
+    }
+    if (call->radio != NULL) {
+        sprintf(builder, "radio:%s;", call->radio);
         strcat(meta_string, builder);
     }
     strcat(meta_string, "\n");
@@ -503,6 +510,9 @@ int main(int argc, char** argv) {
                                     fprintf(stderr, "restored dch data (%i frames):\n", frames);
                                     DumpHex(&dch_buffer, frames * 10);
                                     last_frame = 5;
+
+                                    uint8_t radio_id = dch_buffer[4];
+                                    current_call.radio = get_radio_type(radio_id);
 
                                     uint32_t command = dch_buffer[1] << 16 | dch_buffer[2] << 8 | dch_buffer[3];
                                     if (command == COMMAND_NULL0_GPS || command == COMMAND_NULL1_GPS) {

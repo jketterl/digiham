@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 
 struct radio {
@@ -14,3 +16,5 @@ static struct radio radio_types[] = {
     {0x29, "FTM-100D"},
     {0x2B, "FT-70D"}
 };
+
+char* get_radio_type(uint8_t id);
