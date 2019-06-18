@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
+#include <stdlib.h>
 #include "ysf/trellis.h"
 #include "ysf/fich.h"
 #include "ysf/bitmappings.h"
@@ -11,6 +12,9 @@
 #include "version.h"
 #include "ysf/golay_24_12.h"
 #include "ysf/crc16.h"
+#include "ysf/commands.h"
+#include "ysf/radio_types.h"
+#include "ysf/gps.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -49,6 +53,7 @@ typedef struct {
     char rem2[5];
     char rem3[5];
     char rem4[5];
+    coordinate* location;
 } call_data;
 
 void reset_call(call_data* call) {
@@ -61,12 +66,41 @@ void reset_call(call_data* call) {
     memset(&call->rem2[0], 0, 5);
     memset(&call->rem3[0], 0, 5);
     memset(&call->rem4[0], 0, 5);
+    if (call->location != NULL) free(call->location);
+    call->location = NULL;
 }
 
 void meta_send_call(call_data* call) {
-   char metadata[255];
-   sprintf(metadata, "protocol:YSF;mode:%.2s;source:%.10s;target:%.10s;up:%.10s;down:%.10s\n", call->mode, call->src, call->dest, call->up, call->down);
-   meta_write(&metadata[0]); 
+    char meta_string[255];
+    char builder[255];
+    sprintf(meta_string, "protocol:YSF;");
+    if (strcmp("", call->mode) != 0) {
+        sprintf(builder, "mode:%.2s;", call->mode);
+        strcat(meta_string, builder);
+    }
+    if (strcmp("", call->src) != 0) {
+        sprintf(builder, "source:%.10s;", call->src);
+        strcat(meta_string, builder);
+    }
+    if (strcmp("", call->dest) != 0) {
+        sprintf(builder, "target:%.10s;", call->dest);
+        strcat(meta_string, builder);
+    }
+    if (strcmp("", call->up) != 0) {
+        sprintf(builder, "up:%.10s;", call->up);
+        strcat(meta_string, builder);
+    }
+    if (strcmp("", call->down) != 0) {
+        sprintf(builder, "down:%.10s;", call->down);
+        strcat(meta_string, builder);
+    }
+    if (call->location != NULL) {
+        sprintf(builder, "lat:%.6f;lon:%.6f;", call->location->lat, call->location->lon);
+        strcat(meta_string, builder);
+    }
+    strcat(meta_string, "\n");
+    fwrite(meta_string, 1, strlen(meta_string), meta_fifo);
+    fflush(meta_fifo);
 }
 
 void DumpHex(const void* data, size_t size) {
@@ -217,7 +251,9 @@ int main(int argc, char** argv) {
     int sync_missing = 0;
     call_data current_call;
     reset_call(&current_call);
-    fich* running_fich = 0;
+    fich* running_fich = NULL;
+    uint8_t last_frame = 5;
+    uint8_t dch_buffer[100];
 
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
@@ -261,10 +297,9 @@ int main(int argc, char** argv) {
             if (sync_missing >= 12) {
                 fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                 sync = false;
-                running_fich = 0;
+                running_fich = NULL;
                 reset_call(&current_call);
                 meta_send_call(&current_call);
-                meta_write("\n");
                 break;
             }
 
@@ -322,7 +357,7 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "golay failure\n");
             }
 
-            if (running_fich > 0) {
+            if (running_fich != NULL) {
 
                 //fprintf(stderr, "frame type: %i, call type: %i, data type: %i, sql type: %i\n", fich.frame_type, fich.call_type, fich.data_type, fich.sql_type);
 
@@ -430,7 +465,9 @@ int main(int argc, char** argv) {
 
                             if (current_fich > 0) {
                                 char* target = 0;
-                                switch(current_fich->frame_number) {
+                                uint8_t fn = current_fich -> frame_number;
+                                bool meta_to_send = false;
+                                switch(fn) {
                                     case 0:
                                         target = &current_call.dest[0];
                                         break;
@@ -443,15 +480,58 @@ int main(int argc, char** argv) {
                                     case 3:
                                         target = &current_call.up[0];
                                         break;
+                                    // TODO: 4 contains REM1 & REM2
+                                    // TODO: 5 contains REM3 & REM4
                                 }
 
                                 if (target != 0) {
                                     memcpy(target, &dch[0], 10);
-                                    meta_send_call(&current_call);
-                                //} else {
-                                //    fprintf(stderr, "unprocessed data (FN=%i): ", fich.frame_number);
-                                //    DumpHex(dch, 13);
+                                    meta_to_send = true;
                                 }
+
+                                // frame number should not go above 7, but you never know
+                                if (fn > 5 && fn <= 7) {
+                                    // ensure sequence
+                                    if (last_frame + 1 == fn) {
+                                        last_frame = current_fich -> frame_number;
+                                        memcpy(&dch_buffer[(fn - 6) * 10], &dch[0], 10);
+                                    } else {
+                                        last_frame = 5;
+                                    }
+                                } else if (last_frame > 5) {
+                                    uint8_t frames = last_frame - 5;
+                                    fprintf(stderr, "restored dch data (%i frames):\n", frames);
+                                    DumpHex(&dch_buffer, frames * 10);
+                                    last_frame = 5;
+
+                                    uint32_t command = dch_buffer[1] << 16 | dch_buffer[2] << 8 | dch_buffer[3];
+                                    if (command == COMMAND_NULL0_GPS || command == COMMAND_NULL1_GPS) {
+                                        fprintf(stderr, "no gps\n");
+                                        if (current_call.location != NULL) free(current_call.location);
+                                        current_call.location = NULL;
+                                        meta_to_send = true;
+                                    } else if (command == COMMAND_SHORT_GPS) {
+                                        fprintf(stderr, "short gps!\n");
+                                        // we need 20 bytes for gps
+                                        if (frames >= 2) {
+                                            coordinate location;
+                                            if (decode_gps(&dch_buffer[5], &location)) {
+                                                fprintf(stderr, "gps decode: %f, %f\n", location.lat, location.lon);
+                                                if (current_call.location != NULL) free(current_call.location);
+                                                current_call.location = (coordinate*) malloc(sizeof(coordinate));
+                                                memcpy(current_call.location, &location, sizeof(coordinate));
+                                                meta_to_send = true;
+                                            } else {
+                                                fprintf(stderr, "gps decoding failed :(\n");
+                                            }
+                                        } else {
+                                            fprintf(stderr, "insufficient data to decode gps :(\n");
+                                        }
+                                    }
+                                }
+
+                                if (meta_to_send) meta_send_call(&current_call);
+
                             }
                         } else {
                             fprintf(stderr, "DCH CRC failure\n");
