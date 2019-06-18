@@ -1,5 +1,5 @@
-#include "stdint.h"
-#include "stdbool.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
     float lat;

@@ -15,7 +15,6 @@
 #include "ysf/commands.h"
 #include "ysf/radio_types.h"
 #include "ysf/gps.h"
-#include "ysf/radio_types.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024

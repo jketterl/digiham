@@ -1,8 +1,5 @@
 #include "gps.h"
 
-#include <stdio.h>
-#include <unistd.h>
-
 bool decode_gps(uint8_t* data, coordinate* result) {
     if ((data[0] & 0x0F) > 9) return false;
     if ((data[1] & 0x0F) > 9) return false;
