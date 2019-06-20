@@ -504,39 +504,48 @@ int main(int argc, char** argv) {
                                     } else {
                                         last_frame = 5;
                                     }
-                                } else if (last_frame > 5) {
-                                    uint8_t frames = last_frame - 5;
-                                    fprintf(stderr, "restored dch data (%i frames):\n", frames);
-                                    DumpHex(&dch_buffer, frames * 10);
+                                // we need 20 bytes for DT1 and DT2
+                                } else if (last_frame >= 7) {
+                                    //uint8_t frames = last_frame - 5;
+                                    //fprintf(stderr, "restored dch data (%i frames):\n", frames);
+                                    //DumpHex(&dch_buffer, frames * 10);
                                     last_frame = 5;
 
-                                    uint8_t radio_id = dch_buffer[4];
-                                    current_call.radio = get_radio_type(radio_id);
-
-                                    uint32_t command = dch_buffer[1] << 16 | dch_buffer[2] << 8 | dch_buffer[3];
-                                    if (command == COMMAND_NULL0_GPS || command == COMMAND_NULL1_GPS) {
-                                        fprintf(stderr, "no gps\n");
-                                        if (current_call.location != NULL) free(current_call.location);
-                                        current_call.location = NULL;
-                                        meta_to_send = true;
-                                    } else if (command == COMMAND_SHORT_GPS) {
-                                        fprintf(stderr, "short gps!\n");
-                                        // we need 20 bytes for gps
-                                        if (frames >= 2) {
-                                            coordinate location;
-                                            if (decode_gps(&dch_buffer[5], &location)) {
-                                                fprintf(stderr, "gps decode: %f, %f\n", location.lat, location.lon);
+                                    if (dch_buffer[18] == 0x03) {
+                                        uint8_t checksum = 0;
+                                        for (i = 0; i < 19; i++) checksum += dch_buffer[i];
+                                        if (checksum == dch_buffer[19]) {
+                                            uint32_t command = dch_buffer[1] << 16 | dch_buffer[2] << 8 | dch_buffer[3];
+                                            if (command == COMMAND_NULL0_GPS || command == COMMAND_NULL1_GPS) {
                                                 if (current_call.location != NULL) free(current_call.location);
-                                                current_call.location = (coordinate*) malloc(sizeof(coordinate));
-                                                memcpy(current_call.location, &location, sizeof(coordinate));
+                                                current_call.location = NULL;
                                                 meta_to_send = true;
-                                            } else {
-                                                fprintf(stderr, "gps decoding failed :(\n");
+                                            } else if (command == COMMAND_SHORT_GPS) {
+                                                if (current_call.location != NULL) {
+                                                    free(current_call.location);
+                                                    current_call.location = NULL;
+                                                    meta_to_send = true;
+                                                }
+                                                coordinate* location = (coordinate*) malloc(sizeof(coordinate));
+                                                if (decode_gps(&dch_buffer[5], location)) {
+                                                    current_call.location = location;
+                                                    meta_to_send = true;
+                                                } else {
+                                                    free(location);
+                                                    fprintf(stderr, "gps decoding failed :(\n");
+                                                }
                                             }
+
+                                            uint8_t radio_id = dch_buffer[4];
+                                            current_call.radio = get_radio_type(radio_id);
+
                                         } else {
-                                            fprintf(stderr, "insufficient data to decode gps :(\n");
+                                            fprintf(stderr, "checksum error\n");
                                         }
+                                    } else {
+                                        fprintf(stderr, "invalid terminator\n");
                                     }
+
                                 }
 
                                 if (meta_to_send) meta_send_call(&current_call);
