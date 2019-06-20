@@ -256,6 +256,7 @@ int main(int argc, char** argv) {
     bool sync = false;
     int sync_missing = 0;
     call_data current_call;
+    current_call.location = NULL;
     reset_call(&current_call);
     fich* running_fich = NULL;
     uint8_t last_frame = 5;
@@ -569,6 +570,7 @@ int main(int argc, char** argv) {
                 // the same information is in a frame_type 2... but there's no point decoding it since we are resetting
                 // it as soon as we see one
                 } else if (running_fich->frame_type == 0) {
+                    reset_call(&current_call);
                     for (int dch_num = 0; dch_num < 2; dch_num++) {
                         // contains 5 data channel blocks à 40 bits
                         uint8_t dch_raw[45] = { 0 };
