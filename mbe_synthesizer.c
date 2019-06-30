@@ -70,13 +70,12 @@ int main(int argc, char** argv) {
     int r, framesize;
     short output_short[160];
     float output_float[160];
-    int errs = 0, errs2 = 0;
     char err_str[64];
-    char ambe_d[49];
 
     bool cont = true;
 
     while (cont) {
+        int errs = 0, errs2 = 0;
         if (yaesu) {
             r = fread(&mode, 1, 1, stdin);
             if (r <= 0) {
@@ -105,9 +104,11 @@ int main(int argc, char** argv) {
             break;
         }
 
-        char ambe_d[49];
         int i, k;
-        char ambe_fr[4][24];
+        char ambe_fr[4][24] = { 0 };
+        char ambe_d[49] = { 0 };
+        char imbe_fr[8][23] = { 0 };
+        char imbe_d[88] = { 0 };
 
         switch (mode) {
             case 0:
@@ -139,7 +140,87 @@ int main(int argc, char** argv) {
                     mbe_processAmbe2450Data(output_short, &errs, &errs2, err_str, ambe_d, current, previous, previous_enhanced, unvoiced_quality);
                 }
                 break;
+
+            case 3:
+                // let's ignore error correction for a moment here...
+
+                for (i = 0; i < 4; i++) {
+                    for (k = 0; k < 12; k++) {
+                        int inpos = (i * 23 + k);
+                        int pos = inpos / 8;
+                        int shift = 7 - inpos % 8;
+
+                        int outpos = i * 12 + k;
+
+                        imbe_d[outpos] = (buf[pos] >> shift) & 1;
+                    }
+                }
+
+                for (i = 0; i < 3; i++) {
+                    for (k = 0; k < 11; k++) {
+                        int inpos = 92 + (i * 23 + k);
+                        int pos = inpos / 8;
+                        int shift = 7 - inpos % 8;
+
+                        int outpos = 48 + i * 12 + k;
+
+                        imbe_d[outpos] = (buf[pos] >> shift) & 1;
+                    }
+                }
+
+                for (k = 0; k < 7; k++) {
+                    int inpos = 137 + i;
+                    int pos = inpos / 8;
+                    int shift = 7 - inpos % 8;
+
+                    int outpos = 81 + k;
+
+                    imbe_d[outpos] = (buf[pos] >> shift) & 1;
+                }
+
+                if (use_float) {
+                    mbe_processImbe4400Dataf(output_float, &errs, &errs2, err_str, imbe_d, current, previous, previous_enhanced, unvoiced_quality);
+                } else {
+                    mbe_processImbe4400Data(output_short, &errs, &errs2, err_str, imbe_d, current, previous, previous_enhanced, unvoiced_quality);
+                }
+
+                /*
+                // this should in theory pass a complete imbe frame, including ECC data. in my experience, however,
+                // mbelib will discard most of the data this way, since there is too many errors in there, even when
+                // the originating signal was a very strong one (i.e. taken directly from my radio). i am suspecting
+                // error(s) in the deinterleaving, and maybe in the descrambling process in ysf_decoder.
+                // it is very likely that the interleaving is already corrupting the data, since the first chunk of 23
+                // bits is not scrambled, but is still returning with plenty of golay errors (in the errs variable).
+
+                // first 4 are filled up completely
+                for (i = 0; i < 92; i++) {
+                    int chunk = i / 23;
+                    int chunkpos = i % 23;
+                    int pos = i / 8;
+                    int shift = 7 - i % 8;
+
+                    imbe_fr[chunk][chunkpos] = (buf[pos] >> shift) & 1;
+                }
+                // the rest seem to be partial
+                for (i = 0; i < 52; i++) {
+                    int chunk = 4 + (i / 15);
+                    int chunkpos = i % 15;
+                    int pos = (92 + i) / 8;
+                    int shift = 7 - (92 + i) % 8;
+
+                    imbe_fr[chunk][chunkpos] = (buf[pos] >> shift) & 1;
+                }
+
+                if (use_float) {
+                    mbe_processImbe7200x4400Framef(output_float, &errs, &errs2, err_str, imbe_fr, imbe_d, current, previous, previous_enhanced, unvoiced_quality);
+                } else {
+                    mbe_processImbe7200x4400Frame(output_short, &errs, &errs2, err_str, imbe_fr, imbe_d, current, previous, previous_enhanced, unvoiced_quality);
+                }
+                */
+                break;
         }
+
+        free(buf);
 
         fprintf(stderr, "%s", err_str);
 
@@ -152,10 +233,4 @@ int main(int argc, char** argv) {
     }
 
     return 0;
-
-// void mbe_processAmbe3600x2450Framef (float *aout_buf, int *errs, int *errs2, char *err_str, char ambe_fr[4][24], char ambe_d[49], mbe_parms * cur_mp, mbe_parms * prev_mp, mbe_parms * prev_mp_enhanced, int uvquality);
-
-// mbe_processAmbe2450Dataf (float *aout_buf, int *errs, int *errs2, char *err_str, char ambe_d[49], mbe_parms * cur_mp, mbe_parms * prev_mp, mbe_parms * prev_mp_enhanced, int uvquality)
-
-
 }

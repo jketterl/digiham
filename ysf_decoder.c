@@ -17,7 +17,7 @@
 #include "ysf/gps.h"
 
 #define BUF_SIZE 128
-#define RINGBUFFER_SIZE 1024
+#define RINGBUFFER_SIZE 2048
 
 uint8_t buf[BUF_SIZE];
 uint8_t ringbuffer[RINGBUFFER_SIZE];
@@ -198,22 +198,55 @@ int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
     return SYNCTYPE_UNKNOWN;
 }
 
-void deinterleave_voice_payload(uint8_t payload[9], uint8_t result[12]) {
-    memset(result, 0, 12);
+void deinterleave_v1_voice_payload(uint8_t payload[9], uint8_t result[12]) {
+    for (int i = 0; i < 12; i++) result[i] = 0;
     int input_bit = 0;
 
     for (input_bit = 0; input_bit < 72; input_bit++) {
         int input_position = input_bit / 8;
-        int input_shift = 7 - input_bit % 8;
+        int input_shift = 7 - (input_bit % 8);
 
-        int output_bit = voice_mapping[input_bit];
+        int output_bit = v1_voice_mapping[input_bit];
         int output_position = output_bit / 8;
-        int output_shift = 7 - output_bit % 8;
+        int output_shift = 7 - (output_bit % 8);
 
-        int x = (payload[input_position] >> input_shift) & 1;
+        uint8_t x = (payload[input_position] >> input_shift) & 1;
 
         // output will be blown up to 96 bits per frame
         result[output_position] |= x << output_shift;
+    }
+}
+
+void deinterleave_fr_voice_payload(uint8_t* payload, uint8_t* result) {
+    for (int i = 0; i < 18; i++) result[i] = 0;
+    int output_bit = 0;
+
+    for (output_bit = 0; output_bit < 144; output_bit++) {
+        int input_bit = fr_voice_mapping[output_bit];
+        int input_position = input_bit / 8;
+        int input_shift = 7 - input_bit % 8;
+
+        //int output_bit = fr_voice_mapping[input_bit];
+        int output_position = output_bit / 8;
+        int output_shift = 7 - output_bit % 8;
+
+        uint8_t x = (payload[input_position] >> input_shift) & 1;
+
+        result[output_position] |= x << output_shift;
+    }
+}
+
+void descramble_fr_voice(uint8_t* in, uint8_t offset, uint16_t n, uint32_t seed) {
+    uint32_t v = seed;
+    uint8_t mask = 0;
+    for (uint16_t i = offset; i < n; i++) {
+        v = ((v * 173) + 13849) & 0xffff;
+        mask = (mask << 1) | (v >> 15);
+        if (i % 8 == 7) {
+            //fprintf(stderr, "applying mask %i to offset %i\n", mask, i / 8);
+            in[i / 8] ^= mask;
+            mask = 0;
+        }
     }
 }
 
@@ -261,6 +294,7 @@ int main(int argc, char** argv) {
     fich* running_fich = NULL;
     uint8_t last_frame = 5;
     uint8_t dch_buffer[100];
+    bool expect_sub_frame = false;
 
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
@@ -388,7 +422,7 @@ int main(int argc, char** argv) {
 
                             uint8_t voice_frame[12];
 
-                            deinterleave_voice_payload(voice, voice_frame);
+                            deinterleave_v1_voice_payload(voice, voice_frame);
                             fwrite(&running_fich->data_type, 1, 1, stdout);
                             fwrite(voice_frame, 1, 12, stdout);
                             fflush(stdout);
@@ -562,7 +596,36 @@ int main(int argc, char** argv) {
                         // Voice FR mode
                         memcpy(&current_call.mode[0], "VW", 2);
                         meta_send_call(&current_call);
-                        // not implemented yet
+
+                        // TODO sub header
+                        int start_frame = 0;
+                        if (expect_sub_frame) start_frame = 3;
+                        expect_sub_frame = false;
+
+                        // contains 5 voice channel blocks à 144 bits
+                        for (i = start_frame; i < 5; i++) {
+                            uint8_t voice[18] = { 0 };
+                            // 20 dibits sync + 100 dibits fich + block offset
+                            int offset = ringbuffer_read_pos + 120 + i * 72;
+                            for (k = 0; k < 72; k++) {
+                                uint8_t pos = k / 4;
+                                uint8_t shift = 6 - 2 * (k % 4);
+
+                                voice[pos] |= (ringbuffer[(offset + k) % RINGBUFFER_SIZE] & 3) << shift;
+                            }
+
+                            uint8_t voice_frame[18] = { 0 };
+                            deinterleave_fr_voice_payload(voice, voice_frame);
+
+                            uint16_t seed = (voice_frame[0] << 8) | (voice_frame[1] & 0xF0);
+                            descramble_fr_voice(&voice_frame[0], 23, 144 - 7, seed);
+
+                            fwrite(&running_fich->data_type, 1, 1, stdout);
+                            fwrite(voice_frame, 1, 18, stdout);
+                            fflush(stdout);
+                        }
+
+                        break;
                     //case 1:
                         // Data FR mode
                         // not implemented yet
@@ -615,6 +678,8 @@ int main(int argc, char** argv) {
                             fprintf(stderr, "header frame DCH%i CRC failure\n", dch_num + 1);
                         }
                     }
+                    // TODO only set this on FR mode
+                    expect_sub_frame = true;
 
                 // frame type 2 = terminator channel, i.e. end of transmission
                 } else if (running_fich->frame_type == 2) {
