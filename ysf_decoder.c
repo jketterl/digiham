@@ -15,6 +15,7 @@
 #include "ysf/commands.h"
 #include "ysf/radio_types.h"
 #include "ysf/gps.h"
+#include "hamming_distance.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 2048
@@ -168,31 +169,8 @@ int ringbuffer_bytes() {
     return mod(ringbuffer_write_pos - ringbuffer_read_pos, RINGBUFFER_SIZE);
 }
 
-static const unsigned char lookuptable[256] =
-{
-#   define B2(n) n,     n+1,     n+1,     n+2
-#   define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
-#   define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
-    B6(0), B6(1), B6(1), B6(2)
-};
-
-int symbol_hamming_distance(uint8_t potential_sync[SYNC_SIZE]) {
-    int distance = 0;
-    for (int i = 0; i < SYNC_SIZE; i++) {
-        uint8_t x = potential_sync[i] ^ ysf_sync[i];
-        distance += lookuptable[x];
-    }
-    return distance;
-}
-
 int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
-    if (memcmp(potential_sync, ysf_sync, SYNC_SIZE) == 0) {
-        //fprintf(stderr, "found a sync at pos %i\n", ringbuffer_read_pos);
-        return SYNCTYPE_AVAILABLE;
-    }
-    // accept up to 3 wrong bits and still call it a sync
-    int distance = symbol_hamming_distance(potential_sync);
-    if (distance <= 3) {
+    if (symbol_hamming_distance(potential_sync, ysf_sync, SYNC_SIZE) <= 3) {
         return SYNCTYPE_AVAILABLE;
     }
     return SYNCTYPE_UNKNOWN;
