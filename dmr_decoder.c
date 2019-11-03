@@ -415,6 +415,7 @@ int main(int argc, char** argv) {
     int lastslot = -1;
     signed int slotstability = 0;
     uint8_t slot_filter = 3;
+    int active_slot = -1;
 
     char * control_line;
     size_t control_bufsize = 32;
@@ -584,7 +585,9 @@ int main(int argc, char** argv) {
 
             if (synctypes[slot] == SYNCTYPE_VOICE) {
                 // don't output anything if the slot is muted
-                if ((slot + 1) & slot_filter) {
+                // don't output anything if the other slot is active
+                if (((slot + 1) & slot_filter) && (active_slot == -1 || active_slot == slot)) {
+                    active_slot = slot;
                     // extract payload data
                     uint8_t payload[27] = {0};
                     // first half
@@ -604,67 +607,71 @@ int main(int argc, char** argv) {
                     fwrite(deinterleaved, 1, 36, stdout);
                     fflush(stdout);
                 }
-            } else if (synctypes[slot] == SYNCTYPE_DATA) {
-                uint32_t slot_type = 0;
-                for (i = 0; i < 5; i++) {
-                    uint8_t dibit = ringbuffer[(ringbuffer_read_pos - 5 + i) % RINGBUFFER_SIZE];
-                    slot_type = slot_type << 2 | (dibit & 0b00000011);
+            } else {
+                if (active_slot == slot) {
+                    active_slot = -1;
                 }
-
-                for (i = 0; i < 5; i++) {
-                    uint8_t dibit = ringbuffer[(ringbuffer_read_pos + SYNC_SIZE + i) % RINGBUFFER_SIZE];
-                    slot_type = slot_type << 2 | (dibit & 0b00000011);
-                }
-
-                if (golay_20_8(&slot_type)) {
-                    uint8_t cc = (slot_type >> 16) & 0x0F;
-                    uint8_t data_type = (slot_type >> 12) & 0x0F;
-
-                    // according to ETSI 6.2, rate 3/4 data is the only kind of data that doesn't use the BPTC(196,96) FEC
-                    if (data_type == DATA_TYPE_RATE_3_4_DATA) {
-                        // not decoded
-                        fprintf(stderr, "skipping 3/4 data frame\n");
-                    } else {
-
-                        // extract payload data
-                        uint8_t payload[25] = { 0 };
-                        // first half
-                        int payload_start = ringbuffer_read_pos - 54;
-                        for (k = 0; k < 49; k++) {
-                            payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
-                        }
-
-                        // second half
-                        payload_start = ringbuffer_read_pos + SYNC_SIZE + 5;
-                        for (k = 0; k < 49; k++) {
-                            payload[(k + 49) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * ((k + 49) % 4));
-                        }
-
-                        uint8_t lc[12] = { 0 };
-                        if (bptc_196_96(&payload[0], &lc[0])) {
-                            if (data_type == DATA_TYPE_VOICE_LC) {
-                                decode_lc(lc, slot);
-                            } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
-                                meta_struct* meta = &metadata[slot];
-                                if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
-                                    meta->type = "";
-                                    meta->source = 0;
-                                    meta->target = 0;
-                                    meta_write(slot);
-                                }
-                            } else if (data_type == DATA_TYPE_DATA_HEADER || data_type == DATA_TYPE_RATE_1_2_DATA) {
-                                fprintf(stderr, "raw data (data_type = %i, slot = %i)\n", data_type, slot);
-                                DumpHex(&lc, 13);
-                            } else {
-                                fprintf(stderr, "unhandled data_type: %i\n", data_type);
-                            }
-                        }
-
+                if (synctypes[slot] == SYNCTYPE_DATA) {
+                    uint32_t slot_type = 0;
+                    for (i = 0; i < 5; i++) {
+                        uint8_t dibit = ringbuffer[(ringbuffer_read_pos - 5 + i) % RINGBUFFER_SIZE];
+                        slot_type = slot_type << 2 | (dibit & 0b00000011);
                     }
-                } else {
-                    //fprintf(stderr, "slot type PDU: golay failure\n");
-                }
 
+                    for (i = 0; i < 5; i++) {
+                        uint8_t dibit = ringbuffer[(ringbuffer_read_pos + SYNC_SIZE + i) % RINGBUFFER_SIZE];
+                        slot_type = slot_type << 2 | (dibit & 0b00000011);
+                    }
+
+                    if (golay_20_8(&slot_type)) {
+                        uint8_t cc = (slot_type >> 16) & 0x0F;
+                        uint8_t data_type = (slot_type >> 12) & 0x0F;
+
+                        // according to ETSI 6.2, rate 3/4 data is the only kind of data that doesn't use the BPTC(196,96) FEC
+                        if (data_type == DATA_TYPE_RATE_3_4_DATA) {
+                            // not decoded
+                            fprintf(stderr, "skipping 3/4 data frame\n");
+                        } else {
+
+                            // extract payload data
+                            uint8_t payload[25] = { 0 };
+                            // first half
+                            int payload_start = ringbuffer_read_pos - 54;
+                            for (k = 0; k < 49; k++) {
+                                payload[k / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * (k % 4));
+                            }
+
+                            // second half
+                            payload_start = ringbuffer_read_pos + SYNC_SIZE + 5;
+                            for (k = 0; k < 49; k++) {
+                                payload[(k + 49) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE] & 3) << (6 - 2 * ((k + 49) % 4));
+                            }
+
+                            uint8_t lc[12] = { 0 };
+                            if (bptc_196_96(&payload[0], &lc[0])) {
+                                if (data_type == DATA_TYPE_VOICE_LC) {
+                                    decode_lc(lc, slot);
+                                } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
+                                    meta_struct* meta = &metadata[slot];
+                                    if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
+                                        meta->type = "";
+                                        meta->source = 0;
+                                        meta->target = 0;
+                                        meta_write(slot);
+                                    }
+                                } else if (data_type == DATA_TYPE_DATA_HEADER || data_type == DATA_TYPE_RATE_1_2_DATA) {
+                                    fprintf(stderr, "raw data (data_type = %i, slot = %i)\n", data_type, slot);
+                                    DumpHex(&lc, 13);
+                                } else {
+                                    fprintf(stderr, "unhandled data_type: %i\n", data_type);
+                                }
+                            }
+
+                        }
+                    } else {
+                        //fprintf(stderr, "slot type PDU: golay failure\n");
+                    }
+                }
             }
 
             // advance to the next frame. as long as we have sync, we know where the next frame begins
