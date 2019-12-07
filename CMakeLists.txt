@@ -79,3 +79,12 @@ install(TARGETS rrc_filter dc_block gfsk_demodulator dmr_decoder ysf_decoder mbe
 
 SET(CMAKE_CXX_FLAGS "-O3")
 SET(CMAKE_C_FLAGS "-O3")
+
+SET(CPACK_GENERATOR "DEB")
+SET(CPACK_PACKAGE_VERSION "0.2")
+SET(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Jakob Ketterl <jakob.ketterl@gmx.de>")
+SET(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Tools for decoding digital ham radio communication")
+SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS "ON")
+SET(CPACK_DEBIAN_PACKAGE_SECTION "hamradio")
+INCLUDE(CPack)
