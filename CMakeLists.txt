@@ -59,6 +59,10 @@ add_executable(mbe_synthesizer mbe_synthesizer.c)
 target_link_libraries(mbe_synthesizer version ${LIBS})
 add_executable(digitalvoice_filter digitalvoice_filter.c)
 target_link_libraries(digitalvoice_filter version)
+add_executable(fsk_demodulator fsk_demodulator.c)
+target_link_libraries(fsk_demodulator version)
+add_executable(pocsag_decoder pocsag_decoder.c)
+target_link_libraries(pocsag_decoder version hamming_distance)
 
 add_executable(dmr_quadratic_residue_syndrome_generator dmr/quadratic_residue_syndrome_generator.c)
 target_link_libraries(dmr_quadratic_residue_syndrome_generator dmr_quadratic_residue ${LIBS})
@@ -75,7 +79,7 @@ target_link_libraries(dmr_hamming_15_11_syndrome_generator dmr_hamming_15_11 ${L
 add_executable(dmr_hamming_13_9_syndrome_generator dmr/hamming_13_9_syndrome_generator.c)
 target_link_libraries(dmr_hamming_13_9_syndrome_generator dmr_hamming_13_9 ${LIBS})
 
-install(TARGETS rrc_filter dc_block gfsk_demodulator dmr_decoder ysf_decoder mbe_synthesizer digitalvoice_filter DESTINATION bin)
+install(TARGETS rrc_filter dc_block gfsk_demodulator dmr_decoder ysf_decoder mbe_synthesizer digitalvoice_filter fsk_demodulator pocsag_decoder DESTINATION bin)
 
 SET(CMAKE_CXX_FLAGS "-O3")
 SET(CMAKE_C_FLAGS "-O3")
