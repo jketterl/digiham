@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
 
                             // 18 bits from the data
                             // the 3 last bits come from the frame position
-                            uint32_t address = ((data & 0xFFFFC) < 1) | (codeword_counter / 2);
+                            uint32_t address = ((data & 0xFFFFC) << 1) | (codeword_counter / 2);
                             uint8_t function = data & 0b11;
                             fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
                         } else {
