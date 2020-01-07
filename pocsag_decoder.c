@@ -129,13 +129,13 @@ int main(int argc, char** argv) {
                 }
                 if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
                     fprintf(stderr, "idle codeword\n");
-                    if (message_pos > 0) DumpHex(message, 40);
+                    if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
                     message_pos = 0;
                     memset(message, 0, MAX_MESSAGE_LENGTH);
                 } else {
                     uint32_t codeword_payload = codeword >> 1;
+                    // TODO parity
                     if (bch_31_21(&codeword_payload)) {
-                        // TODO parity
                         uint32_t data = codeword_payload >> 10;
                         if (data & 0x100000) {
                             if (message_pos < MAX_MESSAGE_LENGTH * 7) {
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
                                 }
                             }
                         } else {
-                            if (message_pos > 0) DumpHex(message, 40);
+                            if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
                             message_pos = 0;
                             memset(message, 0, MAX_MESSAGE_LENGTH);
 
