@@ -5,6 +5,7 @@
 #include <math.h>
 #include <float.h>
 #include <getopt.h>
+#include <stdbool.h>
 #include "version.h"
 
 #define RINGBUFFER_SIZE 1024
@@ -59,16 +60,19 @@ void print_usage() {
         "Usage: fsk_demodulator [options]\n\n"
         "Available options:\n"
         " -h, --help      show this message\n"
-        " -v, --version   print version and exit\n",
+        " -v, --version   print version and exit\n"
+        " -i, --invert    invert bits (used e.g in pocsag)\n",
         VERSION
     );
 }
 
 int main(int argc, char** argv) {
     int c;
+    bool invert = false;
     static struct option long_options[] = {
         {"help", no_argument, NULL, 'h'},
         {"version", no_argument, NULL, 'v'},
+        {"invert", no_argument, NULL, 'i'},
         { NULL, 0, NULL, 0 }
     };
     while ((c = getopt_long(argc, argv, "hv", long_options, NULL)) != -1) {
@@ -79,6 +83,9 @@ int main(int argc, char** argv) {
             case 'h':
                 print_usage();
                 return 0;
+            case 'i':
+                invert = true;
+                break;
         }
     }
 
@@ -158,14 +165,13 @@ int main(int argc, char** argv) {
             calibrate_audio();
 
             if (average > centre) {
-                output[output_pos] = 0;
+                output[output_pos] = 1 ^ invert;
             } else {
-                output[output_pos] = 1;
+                output[output_pos] = 0 ^ invert;
             }
 
             output_pos += 1;
         }
-        //fprintf(stderr, "\n");
 
         fwrite(output, 1, output_pos, stdout);
         fflush(stdout);
