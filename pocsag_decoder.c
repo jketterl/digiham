@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         }
 
         while (sync && ringbuffer_bytes() > CODEWORD_SIZE) {
-            if (codeword_counter == CODEWORDS_PER_SYNC) {
+            if (codeword_counter > CODEWORDS_PER_SYNC) {
                 uint8_t potential_sync[SYNC_SIZE];
                 for (i = 0; i < SYNC_SIZE; i++) potential_sync[i] = ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE];
                 if (get_synctype(potential_sync)) {
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
                     sync_missing++;
                 }
 
-                if (sync_missing >= 2) {
+                if (sync_missing >= 1) {
                     fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                     sync = false;
                     break;
@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
                         memset(message, 0, MAX_MESSAGE_LENGTH);
 
                         uint32_t address = 0;
-                        for (i = 1; i < 20; i++) {
+                        for (i = 1; i < 19; i++) {
                             address = (address << 1) | codeword[i];
                         }
                         // the 3 last bits come from the frame position
@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
                         fprintf(stderr, "address codeword; address = %i\n", address);
                     } else {
                         if (message_pos < MAX_MESSAGE_LENGTH * 7) {
-                            for (i = 1; i < 22; i++) {
+                            for (i = 1; i < 21; i++) {
                                 message[message_pos / 7] |= codeword[i] << (message_pos % 7);
                                 message_pos ++;
                             }
