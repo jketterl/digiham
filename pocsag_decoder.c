@@ -98,6 +98,7 @@ int main(int argc, char** argv) {
             if (get_synctype(potential_sync)) {
                 fprintf(stderr, "found sync at %i\n", ringbuffer_read_pos);
                 sync = true; codeword_counter=0; sync_missing = 0;
+                ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
                 break;
             }
 
@@ -106,7 +107,7 @@ int main(int argc, char** argv) {
         }
 
         while (sync && ringbuffer_bytes() > CODEWORD_SIZE) {
-            if (codeword_counter > CODEWORDS_PER_SYNC) {
+            if (codeword_counter >= CODEWORDS_PER_SYNC) {
                 uint8_t potential_sync[SYNC_SIZE];
                 for (i = 0; i < SYNC_SIZE; i++) potential_sync[i] = ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE];
                 if (get_synctype(potential_sync)) {
@@ -115,27 +116,29 @@ int main(int argc, char** argv) {
                     sync_missing++;
                 }
 
+                ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
+
                 if (sync_missing >= 1) {
                     fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                     sync = false;
                     break;
                 }
                 codeword_counter = 0;
-                ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
             } else {
                 uint32_t codeword = 0;
                 for (i = 0; i < CODEWORD_SIZE; i++) {
                     codeword |= (ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE] && 0b1) << (31 - i);
                 }
-                if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
-                    fprintf(stderr, "idle codeword\n");
-                    if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
-                    message_pos = 0;
-                    memset(message, 0, MAX_MESSAGE_LENGTH);
-                } else {
-                    uint32_t codeword_payload = codeword >> 1;
-                    // TODO parity
-                    if (bch_31_21(&codeword_payload)) {
+                uint32_t codeword_payload = codeword >> 1;
+                // TODO parity
+                if (bch_31_21(&codeword_payload)) {
+                    codeword = (codeword & 0b1) | (codeword_payload << 1);
+                    if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
+                        fprintf(stderr, "idle codeword\n");
+                        if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
+                        message_pos = 0;
+                        memset(message, 0, MAX_MESSAGE_LENGTH);
+                    } else {
                         uint32_t data = codeword_payload >> 10;
                         if (data & 0x100000) {
                             if (message_pos < MAX_MESSAGE_LENGTH * 7) {
@@ -156,9 +159,9 @@ int main(int argc, char** argv) {
                             uint8_t function = data & 0b11;
                             fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
                         }
-                    } else {
-                        fprintf(stderr, "ecc failure\n");
                     }
+                } else {
+                    fprintf(stderr, "ecc failure\n");
                 }
 
                 codeword_counter++;
