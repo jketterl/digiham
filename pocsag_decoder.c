@@ -8,6 +8,7 @@
 #include "version.h"
 #include "hamming_distance.h"
 #include "dumphex.h"
+#include "pocsag/bch_31_21.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -23,7 +24,7 @@ uint8_t pocsag_sync[] =  { 0,1,1,1,1,1,0,0,1,1,0,1,0,0,1,0,0,0,0,1,0,1,0,1,1,1,0
 #define CODEWORD_SIZE 32
 #define CODEWORDS_PER_SYNC 16
 
-uint8_t idle_codeword[] = { 0,1,1,1,1,0,1,0,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,1,0,1,1,1 };
+uint32_t idle_codeword = 0b01111010100010011100000110010111;
 
 #define MAX_MESSAGE_LENGTH 40
 
@@ -122,38 +123,40 @@ int main(int argc, char** argv) {
                 codeword_counter = 0;
                 ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
             } else {
-                uint8_t codeword[CODEWORD_SIZE];
+                uint32_t codeword = 0;
                 for (i = 0; i < CODEWORD_SIZE; i++) {
-                    codeword[i] = ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE];
+                    codeword |= ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE] << (31 - i);
                 }
-
-                if (memcmp(codeword, idle_codeword, CODEWORD_SIZE) == 0) {
-                    fprintf(stderr, "idle codeword\n");
-                    if (message_pos > 0) DumpHex(message, 40);
-                    message_pos = 0;
-                    memset(message, 0, MAX_MESSAGE_LENGTH);
-                } else {
-                    // TODO BCH ECC
-                    if (codeword[0] == 0) {
+                if (bch_31_21(&codeword)) {
+                    if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
+                        fprintf(stderr, "idle codeword\n");
                         if (message_pos > 0) DumpHex(message, 40);
                         message_pos = 0;
                         memset(message, 0, MAX_MESSAGE_LENGTH);
-
-                        uint32_t address = 0;
-                        for (i = 1; i < 19; i++) {
-                            address = (address << 1) | codeword[i];
-                        }
-                        // the 3 last bits come from the frame position
-                        address = (address << 3) | (codeword_counter / 2);
-                        fprintf(stderr, "address codeword; address = %i\n", address);
                     } else {
-                        if (message_pos < MAX_MESSAGE_LENGTH * 7) {
-                            for (i = 1; i < 21; i++) {
-                                message[message_pos / 7] |= codeword[i] << (message_pos % 7);
-                                message_pos ++;
+                        if (codeword & 0x80000000) {
+                            if (message_pos > 0) DumpHex(message, 40);
+                            message_pos = 0;
+                            memset(message, 0, MAX_MESSAGE_LENGTH);
+
+                            // 18 bits from the data
+                            uint32_t address = (codeword >> 11) & 0x3FFF;
+                            // the 3 last bits come from the frame position
+                            address = (address << 3) | (codeword_counter / 2);
+                            fprintf(stderr, "address codeword; address = %i\n", address);
+                        } else {
+                            if (message_pos < MAX_MESSAGE_LENGTH * 7) {
+                                uint32_t data = (codeword >> 11) & 0x000FFFFF;
+                                for (i = 0; i < 20; i++) {
+                                    bool bit = (codeword >> i) & 0b1;
+                                    message[message_pos / 7] |= bit << (message_pos % 7);
+                                    message_pos ++;
+                                }
                             }
                         }
                     }
+                } else {
+                    fprintf(stderr, "ecc failure\n");
                 }
 
                 codeword_counter++;

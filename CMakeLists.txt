@@ -46,6 +46,8 @@ add_library(hamming_distance hamming_distance.c)
 target_include_directories (hamming_distance PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(dumphex dumphex.c)
 target_include_directories (dumphex PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(pocsag_bch_31_21 pocsag/bch_31_21.c)
+target_include_directories (pocsag_bch_31_21 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(rrc_filter rrc_filter.c)
 target_link_libraries(rrc_filter version)
@@ -64,7 +66,7 @@ target_link_libraries(digitalvoice_filter version)
 add_executable(fsk_demodulator fsk_demodulator.c)
 target_link_libraries(fsk_demodulator version)
 add_executable(pocsag_decoder pocsag_decoder.c)
-target_link_libraries(pocsag_decoder version hamming_distance dumphex)
+target_link_libraries(pocsag_decoder version hamming_distance dumphex pocsag_bch_31_21)
 
 add_executable(dmr_quadratic_residue_syndrome_generator dmr/quadratic_residue_syndrome_generator.c)
 target_link_libraries(dmr_quadratic_residue_syndrome_generator dmr_quadratic_residue ${LIBS})
@@ -80,6 +82,8 @@ add_executable(dmr_hamming_15_11_syndrome_generator dmr/hamming_15_11_syndrome_g
 target_link_libraries(dmr_hamming_15_11_syndrome_generator dmr_hamming_15_11 ${LIBS})
 add_executable(dmr_hamming_13_9_syndrome_generator dmr/hamming_13_9_syndrome_generator.c)
 target_link_libraries(dmr_hamming_13_9_syndrome_generator dmr_hamming_13_9 ${LIBS})
+add_executable(pocsag_bch_31_21_syndrome_generator pocsag/bch_31_21_syndrome_generator.c)
+target_link_libraries(pocsag_bch_31_21_syndrome_generator pocsag_bch_31_21 ${LIBS})
 
 install(TARGETS rrc_filter dc_block gfsk_demodulator dmr_decoder ysf_decoder mbe_synthesizer digitalvoice_filter fsk_demodulator pocsag_decoder DESTINATION bin)
 
