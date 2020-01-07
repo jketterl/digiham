@@ -133,22 +133,24 @@ int main(int argc, char** argv) {
                     message_pos = 0;
                     memset(message, 0, MAX_MESSAGE_LENGTH);
                 } else {
-                    if (bch_31_21(&codeword)) {
-                        if (codeword & 0x80000000) {
+                    uint32_t codeword_payload = codeword >> 1;
+                    if (bch_31_21(&codeword_payload)) {
+                        uint32_t data = codeword_payload >> 10;
+                        if (data & 0x100000) {
                             if (message_pos > 0) DumpHex(message, 40);
                             message_pos = 0;
                             memset(message, 0, MAX_MESSAGE_LENGTH);
 
                             // 18 bits from the data
-                            uint32_t address = (codeword >> 11) & 0x3FFF;
+                            uint32_t address = (data >> 2) & 0x3FFF;
                             // the 3 last bits come from the frame position
                             address = (address << 3) | (codeword_counter / 2);
-                            fprintf(stderr, "address codeword; address = %i\n", address);
+                            uint8_t function = data & 0b11;
+                            fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
                         } else {
                             if (message_pos < MAX_MESSAGE_LENGTH * 7) {
-                                uint32_t data = (codeword >> 11) & 0x000FFFFF;
                                 for (i = 0; i < 20; i++) {
-                                    bool bit = (codeword >> i) & 0b1;
+                                    bool bit = (data >> i) & 0b1;
                                     message[message_pos / 7] |= bit << (message_pos % 7);
                                     message_pos ++;
                                 }
