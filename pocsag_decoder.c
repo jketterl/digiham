@@ -127,13 +127,13 @@ int main(int argc, char** argv) {
                 for (i = 0; i < CODEWORD_SIZE; i++) {
                     codeword |= ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE] << (31 - i);
                 }
-                if (bch_31_21(&codeword)) {
-                    if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
-                        fprintf(stderr, "idle codeword\n");
-                        if (message_pos > 0) DumpHex(message, 40);
-                        message_pos = 0;
-                        memset(message, 0, MAX_MESSAGE_LENGTH);
-                    } else {
+                if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
+                    fprintf(stderr, "idle codeword\n");
+                    if (message_pos > 0) DumpHex(message, 40);
+                    message_pos = 0;
+                    memset(message, 0, MAX_MESSAGE_LENGTH);
+                } else {
+                    if (bch_31_21(&codeword)) {
                         if (codeword & 0x80000000) {
                             if (message_pos > 0) DumpHex(message, 40);
                             message_pos = 0;
@@ -154,9 +154,9 @@ int main(int argc, char** argv) {
                                 }
                             }
                         }
+                    } else {
+                        fprintf(stderr, "ecc failure\n");
                     }
-                } else {
-                    fprintf(stderr, "ecc failure\n");
                 }
 
                 codeword_counter++;
