@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
             } else {
                 uint32_t codeword = 0;
                 for (i = 0; i < CODEWORD_SIZE; i++) {
-                    codeword |= ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE] << (31 - i);
+                    codeword |= (ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE] && 0b1) << (31 - i);
                 }
                 if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
                     fprintf(stderr, "idle codeword\n");
@@ -138,6 +138,14 @@ int main(int argc, char** argv) {
                         // TODO parity
                         uint32_t data = codeword_payload >> 10;
                         if (data & 0x100000) {
+                            if (message_pos < MAX_MESSAGE_LENGTH * 7) {
+                                for (i = 0; i < 20; i++) {
+                                    bool bit = (data >> (19 - i)) & 0b1;
+                                    message[message_pos / 7] |= bit << (message_pos % 7);
+                                    message_pos ++;
+                                }
+                            }
+                        } else {
                             if (message_pos > 0) DumpHex(message, 40);
                             message_pos = 0;
                             memset(message, 0, MAX_MESSAGE_LENGTH);
@@ -147,14 +155,6 @@ int main(int argc, char** argv) {
                             uint32_t address = ((data & 0xFFFFC) << 1) | (codeword_counter / 2);
                             uint8_t function = data & 0b11;
                             fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
-                        } else {
-                            if (message_pos < MAX_MESSAGE_LENGTH * 7) {
-                                for (i = 0; i < 20; i++) {
-                                    bool bit = (data >> i) & 0b1;
-                                    message[message_pos / 7] |= bit << (message_pos % 7);
-                                    message_pos ++;
-                                }
-                            }
                         }
                     } else {
                         fprintf(stderr, "ecc failure\n");
