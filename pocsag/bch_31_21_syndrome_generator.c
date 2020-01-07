@@ -19,7 +19,7 @@ void evaluate(uint32_t error_pattern) {
 
 int main() {
     // up to 2 bit errors can be corrected reliably
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 31; i++) {
         evaluate( 1 << i );
 
         for (int k = 0; k < i; k++) {
