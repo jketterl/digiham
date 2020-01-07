@@ -135,6 +135,7 @@ int main(int argc, char** argv) {
                 } else {
                     uint32_t codeword_payload = codeword >> 1;
                     if (bch_31_21(&codeword_payload)) {
+                        // TODO parity
                         uint32_t data = codeword_payload >> 10;
                         if (data & 0x100000) {
                             if (message_pos > 0) DumpHex(message, 40);
@@ -142,9 +143,8 @@ int main(int argc, char** argv) {
                             memset(message, 0, MAX_MESSAGE_LENGTH);
 
                             // 18 bits from the data
-                            uint32_t address = (data >> 2) & 0x3FFF;
                             // the 3 last bits come from the frame position
-                            address = (address << 3) | (codeword_counter / 2);
+                            uint32_t address = ((data & 0xFFFFC) < 1) | (codeword_counter / 2);
                             uint8_t function = data & 0b11;
                             fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
                         } else {
