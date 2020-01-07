@@ -4,8 +4,10 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "version.h"
 #include "hamming_distance.h"
+#include "dumphex.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
@@ -18,8 +20,12 @@ int ringbuffer_read_pos = 0;
 #define SYNC_SIZE 32
 uint8_t pocsag_sync[] =  { 0,1,1,1,1,1,0,0,1,1,0,1,0,0,1,0,0,0,0,1,0,1,0,1,1,1,0,1,1,0,0,0 };
 
-// not sure if this even applies
-#define FRAME_SIZE 20
+#define CODEWORD_SIZE 32
+#define CODEWORDS_PER_SYNC 16
+
+uint8_t idle_codeword[] = { 0,1,1,1,1,0,1,0,1,0,0,0,1,0,0,1,1,1,0,0,0,0,0,1,1,0,0,1,0,1,1,1 };
+
+#define MAX_MESSAGE_LENGTH 40
 
 // modulo that will respect the sign
 unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
@@ -30,7 +36,6 @@ int ringbuffer_bytes() {
 
 bool get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
     if (symbol_hamming_distance(potential_sync, pocsag_sync, SYNC_SIZE) <= 3) {
-        //fprintf(stderr, "found a bs data sync at pos %i\n", ringbuffer_read_pos);
         return true;
     }
     return false;
@@ -67,6 +72,11 @@ int main(int argc, char** argv) {
 
     int r = 0;
     bool sync = false;
+    int sync_missing = 0;
+    int codeword_counter = 0;
+    char* message = malloc(sizeof(char) * MAX_MESSAGE_LENGTH);
+    memset(message, 0, MAX_MESSAGE_LENGTH);
+    int message_pos = 0;
 
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
@@ -86,7 +96,7 @@ int main(int argc, char** argv) {
 
             if (get_synctype(potential_sync)) {
                 fprintf(stderr, "found sync at %i\n", ringbuffer_read_pos);
-                sync = true;// sync_missing = 0;
+                sync = true; codeword_counter=0; sync_missing = 0;
                 break;
             }
 
@@ -94,9 +104,61 @@ int main(int argc, char** argv) {
             if (ringbuffer_read_pos >= RINGBUFFER_SIZE) ringbuffer_read_pos = 0;
         }
 
-        while (sync && ringbuffer_bytes() > FRAME_SIZE) {
-            sync = false;
-            ringbuffer_read_pos = mod(ringbuffer_read_pos + FRAME_SIZE, RINGBUFFER_SIZE);
+        while (sync && ringbuffer_bytes() > CODEWORD_SIZE) {
+            if (codeword_counter == CODEWORDS_PER_SYNC) {
+                uint8_t potential_sync[SYNC_SIZE];
+                for (i = 0; i < SYNC_SIZE; i++) potential_sync[i] = ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE];
+                if (get_synctype(potential_sync)) {
+                    sync_missing = 0;
+                } else {
+                    sync_missing++;
+                }
+
+                if (sync_missing >= 2) {
+                    fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
+                    sync = false;
+                    break;
+                }
+                codeword_counter = 0;
+                ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
+            } else {
+                uint8_t codeword[CODEWORD_SIZE];
+                for (i = 0; i < CODEWORD_SIZE; i++) {
+                    codeword[i] = ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE];
+                }
+
+                if (memcmp(codeword, idle_codeword, CODEWORD_SIZE) == 0) {
+                    fprintf(stderr, "idle codeword\n");
+                    if (message_pos > 0) DumpHex(message, 40);
+                    message_pos = 0;
+                    memset(message, 0, MAX_MESSAGE_LENGTH);
+                } else {
+                    // TODO BCH ECC
+                    if (codeword[0] == 0) {
+                        if (message_pos > 0) DumpHex(message, 40);
+                        message_pos = 0;
+                        memset(message, 0, MAX_MESSAGE_LENGTH);
+
+                        uint32_t address = 0;
+                        for (i = 1; i < 20; i++) {
+                            address = (address << 1) | codeword[i];
+                        }
+                        // the 3 last bits come from the frame position
+                        address = (address << 3) | (codeword_counter / 2);
+                        fprintf(stderr, "address codeword; address = %i\n", address);
+                    } else {
+                        if (message_pos < MAX_MESSAGE_LENGTH * 7) {
+                            for (i = 1; i < 22; i++) {
+                                message[message_pos / 7] |= codeword[i] << (message_pos % 7);
+                                message_pos ++;
+                            }
+                        }
+                    }
+                }
+
+                codeword_counter++;
+                ringbuffer_read_pos = mod(ringbuffer_read_pos + CODEWORD_SIZE, RINGBUFFER_SIZE);
+            }
         }
     }
 
