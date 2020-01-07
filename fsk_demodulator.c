@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
         {"invert", no_argument, NULL, 'i'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "hv", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "hvi", long_options, NULL)) != -1) {
         switch (c) {
             case 'v':
                 print_version();
