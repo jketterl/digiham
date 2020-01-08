@@ -139,7 +139,6 @@ int main(int argc, char** argv) {
                     }
                     if (!parity) {
                         if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
-                            fprintf(stderr, "idle codeword\n");
                             if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
                             message_pos = 0;
                             memset(message, 0, MAX_MESSAGE_LENGTH);
