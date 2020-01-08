@@ -130,35 +130,43 @@ int main(int argc, char** argv) {
                     codeword |= (ringbuffer[(ringbuffer_read_pos + i) % RINGBUFFER_SIZE] && 0b1) << (31 - i);
                 }
                 uint32_t codeword_payload = codeword >> 1;
-                // TODO parity
                 if (bch_31_21(&codeword_payload)) {
                     codeword = (codeword & 0b1) | (codeword_payload << 1);
-                    if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
-                        fprintf(stderr, "idle codeword\n");
-                        if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
-                        message_pos = 0;
-                        memset(message, 0, MAX_MESSAGE_LENGTH);
-                    } else {
-                        uint32_t data = codeword_payload >> 10;
-                        if (data & 0x100000) {
-                            if (message_pos < MAX_MESSAGE_LENGTH * 7) {
-                                for (i = 0; i < 20; i++) {
-                                    bool bit = (data >> (19 - i)) & 0b1;
-                                    message[message_pos / 7] |= bit << (message_pos % 7);
-                                    message_pos ++;
-                                }
-                            }
-                        } else {
+
+                    bool parity = 0;
+                    for (i = 0; i < CODEWORD_SIZE; i++) {
+                        parity ^= (codeword >> i) & 0b1;
+                    }
+                    if (!parity) {
+                        if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
+                            fprintf(stderr, "idle codeword\n");
                             if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
                             message_pos = 0;
                             memset(message, 0, MAX_MESSAGE_LENGTH);
+                        } else {
+                            uint32_t data = codeword_payload >> 10;
+                            if (data & 0x100000) {
+                                if (message_pos < MAX_MESSAGE_LENGTH * 7) {
+                                    for (i = 0; i < 20; i++) {
+                                        bool bit = (data >> (19 - i)) & 0b1;
+                                        message[message_pos / 7] |= bit << (message_pos % 7);
+                                        message_pos ++;
+                                    }
+                                }
+                            } else {
+                                if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
+                                message_pos = 0;
+                                memset(message, 0, MAX_MESSAGE_LENGTH);
 
-                            // 18 bits from the data
-                            // the 3 last bits come from the frame position
-                            uint32_t address = ((data & 0xFFFFC) << 1) | (codeword_counter / 2);
-                            uint8_t function = data & 0b11;
-                            fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
+                                // 18 bits from the data
+                                // the 3 last bits come from the frame position
+                                uint32_t address = ((data & 0xFFFFC) << 1) | (codeword_counter / 2);
+                                uint8_t function = data & 0b11;
+                                fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
+                            }
                         }
+                    } else {
+                        fprintf(stderr, "parity failure\n");
                     }
                 } else {
                     fprintf(stderr, "ecc failure\n");
