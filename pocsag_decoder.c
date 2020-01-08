@@ -26,7 +26,7 @@ uint8_t pocsag_sync[] =  { 0,1,1,1,1,1,0,0,1,1,0,1,0,0,1,0,0,0,0,1,0,1,0,1,1,1,0
 
 uint32_t idle_codeword = 0b01111010100010011100000110010111;
 
-#define MAX_MESSAGE_LENGTH 40
+#define MAX_MESSAGE_LENGTH 80
 
 // modulo that will respect the sign
 unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
