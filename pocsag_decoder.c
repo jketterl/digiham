@@ -54,7 +54,8 @@ void start_message(uint32_t address, uint8_t type) {
 
 void complete_message() {
     if (currentmessage == NULL) return;
-    fprintf(stderr, "%i: \"%s\"\n", currentmessage->address, currentmessage->content);
+    fprintf(stdout, "%i: \"%s\"\n", currentmessage->address, currentmessage->content);
+    fflush(stdout);
     discard_message();
 }
 
