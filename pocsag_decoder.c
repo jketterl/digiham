@@ -32,7 +32,7 @@ typedef struct {
     uint32_t address;
     uint8_t type;
     char* content;
-    uint8_t pos;
+    uint16_t pos;
 } message;
 
 message* currentmessage = NULL;
@@ -46,7 +46,7 @@ void discard_message() {
 
 void start_message(uint32_t address, uint8_t type) {
     discard_message();
-    currentmessage = malloc(sizeof(message));
+    currentmessage = (message*) malloc(sizeof(message));
     currentmessage->address = address;
     currentmessage->type = type;
     currentmessage->content = (char*) malloc(sizeof(char) * MAX_MESSAGE_LENGTH + 1);
@@ -184,7 +184,6 @@ int main(int argc, char** argv) {
             if (get_synctype(potential_sync)) {
                 fprintf(stderr, "found sync at %i\n", ringbuffer_read_pos);
                 sync = true; codeword_counter=0; sync_missing = 0;
-                complete_message();
                 ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
                 break;
             }
