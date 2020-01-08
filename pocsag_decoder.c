@@ -28,6 +28,92 @@ uint32_t idle_codeword = 0b01111010100010011100000110010111;
 
 #define MAX_MESSAGE_LENGTH 80
 
+typedef struct {
+    uint32_t address;
+    uint8_t type;
+    char* content;
+    uint8_t pos;
+} message;
+
+message* currentmessage = NULL;
+
+void discard_message() {
+    if (currentmessage != NULL) free(currentmessage);
+    currentmessage = NULL;
+}
+
+void start_message(uint32_t address, uint8_t type) {
+    discard_message();
+    currentmessage = malloc(sizeof(message));
+    currentmessage->address = address;
+    currentmessage->type = type;
+    currentmessage->content = (char*) malloc(sizeof(char) * MAX_MESSAGE_LENGTH + 1);
+    memset(currentmessage->content, 0, MAX_MESSAGE_LENGTH + 1);
+    currentmessage->pos = 0;
+}
+
+void complete_message() {
+    if (currentmessage == NULL) return;
+    fprintf(stderr, "%i: \"%s\"\n", currentmessage->address, currentmessage->content);
+    discard_message();
+}
+
+bool message_started() {
+    if (currentmessage == NULL) return false;
+    return (currentmessage->pos > 0);
+}
+
+void message_append(uint32_t data) {
+    if (currentmessage == NULL) return;
+    switch (currentmessage->type) {
+        case 3:
+            if (currentmessage->pos < MAX_MESSAGE_LENGTH * 7) {
+                uint8_t i;
+                for (i = 0; i < 20; i++) {
+                    bool bit = (data >> (19 - i)) & 0b1;
+                    currentmessage->content[currentmessage->pos / 7] |= bit << (currentmessage->pos % 7);
+                    currentmessage->pos ++;
+                }
+            } else {
+                fprintf(stderr, "WARNING: message overflow (type 3)\n");
+            }
+            break;
+        case 0:
+            if (currentmessage-> pos < MAX_MESSAGE_LENGTH) {
+                uint8_t i;
+                for (i = 0; i < 5; i++) {
+                    char c = ((data >> (4 - i) * 4) & 0xF);
+                    if (c < 0xA) {
+                        c = '0' + c;
+                    } else switch (c) {
+                        case 0xA:
+                            c = '*';
+                            break;
+                        case 0xB:
+                            c = 'U';
+                            break;
+                        case 0xC:
+                            c = ' ';
+                            break;
+                        case 0xD:
+                            c = '-';
+                            break;
+                        case 0xE:
+                            c = ')';
+                            break;
+                        case 0xF:
+                            c = '(';
+                            break;
+                    }
+                    currentmessage->content[currentmessage->pos++] = c;
+                }
+            } else {
+                fprintf(stderr, "WARNING: message overflow (type 0)\n");
+            }
+            break;
+    }
+}
+
 // modulo that will respect the sign
 unsigned int mod(int n, int x) { return ((n%x)+x)%x; }
 
@@ -75,9 +161,6 @@ int main(int argc, char** argv) {
     bool sync = false;
     int sync_missing = 0;
     int codeword_counter = 0;
-    char* message = malloc(sizeof(char) * MAX_MESSAGE_LENGTH);
-    memset(message, 0, MAX_MESSAGE_LENGTH);
-    int message_pos = 0;
 
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
@@ -98,6 +181,7 @@ int main(int argc, char** argv) {
             if (get_synctype(potential_sync)) {
                 fprintf(stderr, "found sync at %i\n", ringbuffer_read_pos);
                 sync = true; codeword_counter=0; sync_missing = 0;
+                complete_message();
                 ringbuffer_read_pos = mod(ringbuffer_read_pos + SYNC_SIZE, RINGBUFFER_SIZE);
                 break;
             }
@@ -121,6 +205,7 @@ int main(int argc, char** argv) {
                 if (sync_missing >= 1) {
                     fprintf(stderr, "lost sync at %i\n", ringbuffer_read_pos);
                     sync = false;
+                    complete_message();
                     break;
                 }
                 codeword_counter = 0;
@@ -139,36 +224,29 @@ int main(int argc, char** argv) {
                     }
                     if (!parity) {
                         if (memcmp(&codeword, &idle_codeword, CODEWORD_SIZE / 8) == 0) {
-                            if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
-                            message_pos = 0;
-                            memset(message, 0, MAX_MESSAGE_LENGTH);
+                            if (message_started()) complete_message();
                         } else {
                             uint32_t data = codeword_payload >> 10;
                             if (data & 0x100000) {
-                                if (message_pos < MAX_MESSAGE_LENGTH * 7) {
-                                    for (i = 0; i < 20; i++) {
-                                        bool bit = (data >> (19 - i)) & 0b1;
-                                        message[message_pos / 7] |= bit << (message_pos % 7);
-                                        message_pos ++;
-                                    }
-                                }
+                                message_append(data & 0xFFFFF);
                             } else {
-                                if (message_pos > 0) fprintf(stderr, "decoded message: %s\n", message);
-                                message_pos = 0;
-                                memset(message, 0, MAX_MESSAGE_LENGTH);
+                                complete_message();
 
                                 // 18 bits from the data
                                 // the 3 last bits come from the frame position
                                 uint32_t address = ((data & 0xFFFFC) << 1) | (codeword_counter / 2);
                                 uint8_t function = data & 0b11;
-                                fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
+                                //fprintf(stderr, "address codeword; address = %i, function = %i\n", address, function);
+                                start_message(address, function);
                             }
                         }
                     } else {
                         fprintf(stderr, "parity failure\n");
+                        discard_message();
                     }
                 } else {
                     fprintf(stderr, "ecc failure\n");
+                    discard_message();
                 }
 
                 codeword_counter++;
