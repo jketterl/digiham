@@ -38,7 +38,9 @@ typedef struct {
 message* currentmessage = NULL;
 
 void discard_message() {
-    if (currentmessage != NULL) free(currentmessage);
+    if (currentmessage == NULL) return;
+    free(currentmessage->content);
+    free(currentmessage);
     currentmessage = NULL;
 }
 
