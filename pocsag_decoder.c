@@ -46,6 +46,13 @@ void discard_message() {
 
 void start_message(uint32_t address, uint8_t type) {
     discard_message();
+    // type 0: numeric
+    // type 3: alphanumeric
+    // the others are probably custom
+    if (type != 0 && type != 3) {
+        fprintf(stderr, "unable to handle message type %i\n", type);
+        return;
+    }
     currentmessage = (message*) malloc(sizeof(message));
     currentmessage->address = address;
     currentmessage->type = type;
