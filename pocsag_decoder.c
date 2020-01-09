@@ -92,7 +92,12 @@ void message_append(uint32_t data) {
             if (currentmessage-> pos < MAX_MESSAGE_LENGTH) {
                 uint8_t i;
                 for (i = 0; i < 5; i++) {
-                    char c = ((data >> (4 - i) * 4) & 0xF);
+                    char c = 0;
+                    uint8_t k;
+                    uint8_t base = (4 - i) * 4;
+                    for (k = 0; k < 4; k++) {
+                        c |= ((data >> (base + k)) & 0b1) << (3 - k);
+                    }
                     if (c < 0xA) {
                         c = '0' + c;
                     } else switch (c) {
