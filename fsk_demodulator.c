@@ -18,7 +18,7 @@ int ringbuffer_write_pos = 0;
 uint8_t output[OUTPUT_SIZE];
 int output_pos = 0;
 
-#define SAMPLES_PER_SYMBOL 10
+#define SAMPLES_PER_SYMBOL 40
 #define VOLUME_RB_SIZE 100
 
 float volume_rb[VOLUME_RB_SIZE];
