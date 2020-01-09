@@ -110,35 +110,6 @@ void meta_send_call(call_data* call) {
     fflush(meta_fifo);
 }
 
-void DumpHex(const void* data, size_t size) {
-    char ascii[17];
-    size_t i, j;
-    ascii[16] = '\0';
-    for (i = 0; i < size; ++i) {
-        fprintf(stderr, "%02X ", ((unsigned char*)data)[i]);
-        if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
-            ascii[i % 16] = ((unsigned char*)data)[i];
-        } else {
-            ascii[i % 16] = '.';
-        }
-        if ((i+1) % 8 == 0 || i+1 == size) {
-            fprintf(stderr, " ");
-            if ((i+1) % 16 == 0) {
-                fprintf(stderr, "|  %s \n", ascii);
-            } else if (i+1 == size) {
-                ascii[(i+1) % 16] = '\0';
-                if ((i+1) % 16 <= 8) {
-                    fprintf(stderr, " ");
-                }
-                for (j = (i+1) % 16; j < 16; ++j) {
-                    fprintf(stderr, "   ");
-                }
-                fprintf(stderr, "|  %s \n", ascii);
-            }
-        }
-    }
-}
-
 uint8_t tribit_majority_table[8] = { 0, 0, 0, 1, 0, 1, 1, 1 };
 
 void decode_tribits(uint8_t* input, uint8_t* output, uint8_t num) {
@@ -521,7 +492,6 @@ int main(int argc, char** argv) {
                                 } else if (last_frame >= 7) {
                                     //uint8_t frames = last_frame - 5;
                                     //fprintf(stderr, "restored dch data (%i frames):\n", frames);
-                                    //DumpHex(&dch_buffer, frames * 10);
                                     last_frame = 5;
 
                                     if (dch_buffer[18] == 0x03) {
