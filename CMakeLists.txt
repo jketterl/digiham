@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
-project (digiham VERSION 0.3.0)
+project (digiham VERSION 0.4.0)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 

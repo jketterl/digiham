@@ -1,3 +1,3 @@
-#define VERSION "0.3.0"
+#define VERSION "0.4-SNAPSHOT"
 
 void print_version();
