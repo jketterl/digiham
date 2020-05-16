@@ -36,7 +36,7 @@ target_include_directories (dmr_hamming_15_11 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 add_library(dmr_hamming_13_9 STATIC dmr/hamming_13_9.c)
 target_include_directories (dmr_hamming_13_9 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(dmr_bptc_196_96 STATIC dmr/bptc_196_96.c)
-target_include_directories (dmr_bptc_196_96 PUBLIC ${CMAKE_CURRENT_SOUCE_DIR})
+target_include_directories (dmr_bptc_196_96 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dmr_bptc_196_96 dmr_hamming_13_9 dmr_hamming_15_11)
 add_library(ysf_gps STATIC ysf/gps.c)
 target_include_directories (ysf_gps PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
