@@ -1,0 +1,4 @@
+digiham (0.4.0) UNRELEASED; urgency=low
+  * First release using debian build system; first changelog entry.
+
+ -- Jakob Ketterl <jakob.ketterl@gmx.de>  Thu, 03 Dec 2020 20:09:00 +0000
