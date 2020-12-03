@@ -1,6 +1,6 @@
 # Digital Ham Radio decoding tools
 
-This a simple set of command-line tools that is intended to be used to decode digital modulations used by ham radio
+This is a simple set of command-line tools that is intended to be used to decode digital modulations used by ham radio
 operators. The main focus is on digital voice modes.
 
 Right now this project enables you to decode DMR and YSF, future plans include NXDN and D-Star.
