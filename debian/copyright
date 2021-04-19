@@ -2,7 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
 License: GPL-3+
-Copyright: 2016-2020 Jakob Ketterl <dd5jfk@darc.de>
+Copyright: 2016-2021 Jakob Ketterl <dd5jfk@darc.de>
 
 Files: LICENSE
 Copyright: 2007, Free Software Foundation, Inc. <https://fsf.org/>

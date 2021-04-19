@@ -6,7 +6,7 @@
 #define BUF_SIZE 256
 float buf[BUF_SIZE];
 int r = 0;
-#define R 0.995f
+#define R 0.998f
 #define GAIN (1 + R) / 2
 
 void print_usage() {
