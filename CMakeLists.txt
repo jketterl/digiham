@@ -54,3 +54,5 @@ install(TARGETS rrc_filter dc_block gfsk_demodulator dmr_decoder ysf_decoder mbe
 
 SET(CMAKE_CXX_FLAGS "-O3")
 SET(CMAKE_C_FLAGS "-O3")
+SET(CMAKE_CXX_FLAGS_DEBUG "-g -O3")
+SET(CMAKE_C_FLAGS_DEBUG "-g -O3")
