@@ -1,4 +1,9 @@
 cmake_minimum_required (VERSION 3.0)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
 project (digiham VERSION 0.4.0)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
@@ -52,7 +57,7 @@ endif()
 
 install(TARGETS rrc_filter dc_block gfsk_demodulator dmr_decoder ysf_decoder mbe_synthesizer digitalvoice_filter fsk_demodulator pocsag_decoder DESTINATION bin)
 
-SET(CMAKE_CXX_FLAGS "-O3")
-SET(CMAKE_C_FLAGS "-O3")
+SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
+SET(CMAKE_C_FLAGS_RELEASE "-O3")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -O3")
 SET(CMAKE_C_FLAGS_DEBUG "-g -O3")
