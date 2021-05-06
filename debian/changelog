@@ -1,4 +1,4 @@
-digiham (0.4.0) UNRELEASED; urgency=low
+digiham (0.4.0) buster hirsute; urgency=low
   * First release using debian build system; first changelog entry.
   * Improved dc_block performance for use in M17
 
