@@ -2,4 +2,4 @@ digiham (0.4.0) buster hirsute; urgency=low
   * First release using debian build system; first changelog entry.
   * Improved dc_block performance for use in M17
 
- -- Jakob Ketterl <jakob.ketterl@gmx.de>  Thu, 03 Dec 2020 20:09:00 +0000
+ -- Jakob Ketterl <jakob.ketterl@gmx.de>  Thu, 06 May 2021 14:54:00 +0000
