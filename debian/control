@@ -3,7 +3,7 @@ Maintainer: Jakob Ketterl <jakob.ketterl@gmx.de>
 Section: hamradio
 Priority: optional
 Standards-Version: 4.2.0
-Build-Depends: debhelper (>= 11), cmake (>= 3), libmbe-dev
+Build-Depends: debhelper (>= 11), cmake (>= 3)
 Vcs-Browser: https://github.com/jketterl/digiham
 Vcs-Git: https://github.com/jketterl/digiham.git
 
