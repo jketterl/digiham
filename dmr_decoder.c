@@ -59,13 +59,21 @@ FILE *meta_fifo = NULL;
 FILE *control_fifo = NULL;
 
 typedef struct {
-    char* sync;
-    char* type;
+    unsigned char sync;
+    unsigned char type;
     uint32_t source;
     uint32_t target;
 } meta_struct;
 
 meta_struct metadata[2];
+
+#define META_SYNC_NONE 0
+#define META_SYNC_VOICE 1
+#define META_SYNC_DATA 2
+
+#define META_TYPE_NONE 0
+#define META_TYPE_DIRECT 1
+#define META_TYPE_GROUP 2
 
 void meta_write(uint8_t slot) {
     if (meta_fifo == NULL) return;
@@ -74,13 +82,21 @@ void meta_write(uint8_t slot) {
     char builder[255];
 
     sprintf(meta_string, "protocol:DMR;slot:%i;", slot);
-    if (meta->sync != NULL && strlen(meta->sync) > 0) {
-        sprintf(builder, "sync:%s;", meta->sync);
-        strcat(meta_string, builder);
+    switch (meta->sync) {
+        case META_SYNC_VOICE:
+            strcat(meta_string, "sync:voice;");
+            break;
+        case META_SYNC_DATA:
+            strcat(meta_string, "sync:data;");
+            break;
     }
-    if (meta->type != NULL && strlen(meta->type) > 0) {
-        sprintf(builder, "type:%s;", meta->type);
-        strcat(meta_string, builder);
+    switch (meta->type) {
+        case META_TYPE_DIRECT:
+            strcat(meta_string, "type:direct;");
+            break;
+        case META_TYPE_GROUP:
+            strcat(meta_string, "type:group;");
+            break;
     }
     if (meta->source > 0) {
         sprintf(builder, "source:%i;", meta->source);
@@ -97,8 +113,8 @@ void meta_write(uint8_t slot) {
 
 void meta_reset(uint8_t slot) {
     meta_struct* meta = &metadata[slot];
-    meta->sync = "";
-    meta->type = "";
+    meta->sync = META_SYNC_NONE;
+    meta->type = META_SYNC_NONE;
     meta->source = 0;
     meta->target = 0;
 }
@@ -128,29 +144,6 @@ int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
         return SYNCTYPE_VOICE;
     }
     return SYNCTYPE_UNKNOWN;
-}
-
-void deinterleave_voice_payload(uint8_t payload[27], uint8_t result[36]) {
-    memset(result, 0, 36);
-    int frame = 0;
-    int input_bit = 0;
-
-    // 27 bytes of payload contain 3 vocoder frames à 72 bits
-    for (frame = 0; frame < 3; frame++) {
-        for (input_bit = 0; input_bit < 72; input_bit++) {
-            int input_position = input_bit / 8;
-            int input_shift = 7 - input_bit % 8;
-
-            int output_bit = voice_mapping[input_bit];
-            int output_position = output_bit / 8;
-            int output_shift = 7 - output_bit % 8;
-
-            int x = (payload[frame * 9 + input_position] >> input_shift) & 1;
-
-            // output will be blown up to 96 bits per frame
-            result[frame * 12 + output_position] |= x << output_shift;
-        }
-    }
 }
 
 #define LCSS_SINGLE 0
@@ -236,14 +229,14 @@ void decode_lc(uint8_t lc[9], uint8_t slot) {
     switch (flc_opcode) {
         case FLC_OPCODE_GROUP:
             fprintf(stderr, " group voice; group: %i, source: %i ", target_id, source_id);
-            metadata[slot].type = "group";
+            metadata[slot].type = META_TYPE_GROUP;
             metadata[slot].source = source_id;
             metadata[slot].target = target_id;
             meta_write(slot);
             break;
         case FLC_OPCODE_UNIT_TO_UNIT:
             fprintf(stderr, " direct voice; target: %i, source: %i ", target_id, source_id);
-            metadata[slot].type = "direct";
+            metadata[slot].type = META_TYPE_DIRECT;
             metadata[slot].source = source_id;
             metadata[slot].target = target_id;
             meta_write(slot);
@@ -391,6 +384,7 @@ int main(int argc, char** argv) {
     char * control_line;
     size_t control_bufsize = 32;
     control_line = (char *) malloc(control_bufsize * sizeof(char));
+    meta_reset(0); meta_reset(1);
 
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
         int i;
@@ -523,11 +517,11 @@ int main(int argc, char** argv) {
                 synctypes[slot] = synctype;
                 // send synctype change over metadata fifo
                 if (synctype == SYNCTYPE_VOICE) {
-                    metadata[slot].sync = "voice";
+                    metadata[slot].sync = META_SYNC_VOICE;
                 } else if (synctype == SYNCTYPE_DATA) {
                     meta_struct* meta = &metadata[slot];
-                    meta->sync = "data";
-                    meta->type = "";
+                    meta->sync = META_SYNC_DATA;
+                    meta->type = META_TYPE_NONE;
                     meta->source = 0;
                     meta->target = 0;
                 } else {
@@ -573,9 +567,7 @@ int main(int argc, char** argv) {
                         payload[(k + 54) / 4] |= (ringbuffer[(payload_start + k) % RINGBUFFER_SIZE]) << (6 - 2 * ((k + 54) % 4));
                     }
 
-                    uint8_t deinterleaved[36];
-                    deinterleave_voice_payload(payload, deinterleaved);
-                    fwrite(deinterleaved, 1, 36, stdout);
+                    fwrite(payload, 1, 27, stdout);
                     fflush(stdout);
                 }
             } else {
@@ -624,8 +616,8 @@ int main(int argc, char** argv) {
                                     decode_lc(lc, slot);
                                 } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
                                     meta_struct* meta = &metadata[slot];
-                                    if (strcmp("", meta->type) != 0 || meta->source > 0 || meta->target > 0) {
-                                        meta->type = "";
+                                    if (meta->type != META_TYPE_NONE || meta->source > 0 || meta->target > 0) {
+                                        meta->type = META_TYPE_NONE;
                                         meta->source = 0;
                                         meta->target = 0;
                                         meta_write(slot);
