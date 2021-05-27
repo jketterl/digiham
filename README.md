@@ -11,7 +11,10 @@ decodes the available information, which is then displayed on the receiver's web
 ## Requirements
 
 Most digital voice modes in the ham radio universe right now use some version of the AMBE digital voice codec. In order
-to decode them, you will need to install [mbelib](https://github.com/szechyjs/mbelib).
+to decode them, you will need to setup the correspoding decoding infrastructor.
+
+This project comes with mbe_synthesizer that can send the received audio data to a
+[codecserver](https://github.com/jketterl/codecserver) instance for decoding.
 
 ## Installation
 
