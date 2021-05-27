@@ -1,8 +1,8 @@
 #include "cli.hpp"
-#include <codecserver/handshake.pb.h>
-#include <codecserver/request.pb.h>
-#include <codecserver/response.pb.h>
-#include <codecserver/data.pb.h>
+#include <codecserver/proto/handshake.pb.h>
+#include <codecserver/proto/request.pb.h>
+#include <codecserver/proto/response.pb.h>
+#include <codecserver/proto/data.pb.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/select.h>

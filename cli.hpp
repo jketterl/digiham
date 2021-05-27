@@ -1,7 +1,7 @@
 #pragma once
 
 #include <codecserver/connection.hpp>
-#include <codecserver/framing.pb.h>
+#include <codecserver/proto/framing.pb.h>
 
 using namespace CodecServer::proto;
 
