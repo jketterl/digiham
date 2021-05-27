@@ -147,55 +147,21 @@ int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
     return SYNCTYPE_UNKNOWN;
 }
 
-void deinterleave_v1_voice_payload(uint8_t payload[9], uint8_t result[12]) {
-    for (int i = 0; i < 12; i++) result[i] = 0;
+void interleave_v2_voice_payload(uint8_t payload[7], uint8_t result[7]) {
+    for (int i = 0; i < 8; i++) result[i] = 0;
     int input_bit = 0;
 
-    for (input_bit = 0; input_bit < 72; input_bit++) {
+    for (input_bit = 0; input_bit < 49; input_bit++) {
         int input_position = input_bit / 8;
         int input_shift = 7 - (input_bit % 8);
 
-        int output_bit = v1_voice_mapping[input_bit];
+        int output_bit = v2_voice_mapping[input_bit];
         int output_position = output_bit / 8;
         int output_shift = 7 - (output_bit % 8);
 
         uint8_t x = (payload[input_position] >> input_shift) & 1;
 
-        // output will be blown up to 96 bits per frame
         result[output_position] |= x << output_shift;
-    }
-}
-
-void deinterleave_fr_voice_payload(uint8_t* payload, uint8_t* result) {
-    for (int i = 0; i < 18; i++) result[i] = 0;
-    int output_bit = 0;
-
-    for (output_bit = 0; output_bit < 144; output_bit++) {
-        int input_bit = fr_voice_mapping[output_bit];
-        int input_position = input_bit / 8;
-        int input_shift = 7 - input_bit % 8;
-
-        //int output_bit = fr_voice_mapping[input_bit];
-        int output_position = output_bit / 8;
-        int output_shift = 7 - output_bit % 8;
-
-        uint8_t x = (payload[input_position] >> input_shift) & 1;
-
-        result[output_position] |= x << output_shift;
-    }
-}
-
-void descramble_fr_voice(uint8_t* in, uint8_t offset, uint16_t n, uint32_t seed) {
-    uint32_t v = seed;
-    uint8_t mask = 0;
-    for (uint16_t i = offset; i < n; i++) {
-        v = ((v * 173) + 13849) & 0xffff;
-        mask = (mask << 1) | (v >> 15);
-        if (i % 8 == 7) {
-            //fprintf(stderr, "applying mask %i to offset %i\n", mask, i / 8);
-            in[i / 8] ^= mask;
-            mask = 0;
-        }
     }
 }
 
@@ -369,11 +335,7 @@ int main(int argc, char** argv) {
                                 voice[pos] = (ringbuffer[(offset + k) % RINGBUFFER_SIZE] & 3) << shift;
                             }
 
-                            uint8_t voice_frame[12];
-
-                            deinterleave_v1_voice_payload(voice, voice_frame);
-                            fwrite(&running_fich->data_type, 1, 1, stdout);
-                            fwrite(voice_frame, 1, 12, stdout);
+                            fwrite(voice, 1, 9, stdout);
                             fflush(stdout);
                         }
                         break;
@@ -423,10 +385,14 @@ int main(int argc, char** argv) {
                                 int outshift = 7 - (outbit_pos % 8);
 
                                 voice[outpos] |= ((voice_tribit[inpos] >> inshift) & 1) << outshift;
+
                             }
 
+                            uint8_t voice_frame[7] = { 0 };
+                            interleave_v2_voice_payload(voice, voice_frame);
+
                             fwrite(&running_fich->data_type, 1, 1, stdout);
-                            fwrite(voice, 1, 7, stdout);
+                            fwrite(voice_frame, 1, 7, stdout);
                             fflush(stdout);
                         }
                         // contains 5 data channel blocks à 40 bits
@@ -562,14 +528,8 @@ int main(int argc, char** argv) {
                                 voice[pos] |= (ringbuffer[(offset + k) % RINGBUFFER_SIZE] & 3) << shift;
                             }
 
-                            uint8_t voice_frame[18] = { 0 };
-                            deinterleave_fr_voice_payload(voice, voice_frame);
-
-                            uint16_t seed = (voice_frame[0] << 8) | (voice_frame[1] & 0xF0);
-                            descramble_fr_voice(&voice_frame[0], 23, 144 - 7, seed);
-
                             fwrite(&running_fich->data_type, 1, 1, stdout);
-                            fwrite(voice_frame, 1, 18, stdout);
+                            fwrite(voice, 1, 18, stdout);
                             fflush(stdout);
                         }
 
