@@ -4,9 +4,11 @@
 #include <codecserver/proto/response.pb.h>
 #include <codecserver/proto/data.pb.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <sys/select.h>
 #include <unistd.h>
+#include <netdb.h>
 #include <iostream>
 #include <stdio.h>
 #include <google/protobuf/any.pb.h>
@@ -20,27 +22,15 @@ int Cli::main(int argc, char** argv) {
         return 0;
     }
 
-    sockaddr_un addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    const char* socket_path = "/tmp/codecserver.sock";
-    strncpy(addr.sun_path, socket_path, strlen(socket_path));
-
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sock = buildSocket();
     if (sock == -1) {
-        std::cerr << "socket error\n";
-        return 1;
-    }
-
-    if (connect(sock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
-        std::cerr << "connection failure\n";
         return 1;
     }
 
     connection = new Connection(sock);
     google::protobuf::Any* message = connection->receiveMessage();
     if (!message->Is<Handshake>()) {
-        std::cerr << "unexpected message\n";
+        std::cerr << "unexpected message: " << strerror(errno) << "\n";
         return 1;
     }
 
@@ -151,6 +141,79 @@ int Cli::main(int argc, char** argv) {
     return 0;
 }
 
+int Cli::buildSocket() {
+    if (server.at(0) == '/') {
+        // unix domain sockets connection
+        sockaddr_un addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sun_family = AF_UNIX;
+        const char* socket_path = "/tmp/codecserver.sock";
+        strncpy(addr.sun_path, socket_path, strlen(socket_path));
+
+        int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (sock == -1) {
+            std::cerr << "socket error: " << strerror(errno) << "\n";
+            return -1;
+        }
+
+        if (connect(sock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
+            std::cerr << "connection failure: " << strerror(errno) << "\n";
+            return -1;
+        }
+
+        return sock;
+    } else {
+        // IPv6 / IPv4 socket
+        struct addrinfo hints;
+        struct addrinfo* result;
+
+        memset(&hints, 0, sizeof(struct addrinfo));
+        hints.ai_family = AF_UNSPEC;     /* Allow IPv4 or IPv6 */
+        hints.ai_socktype = SOCK_STREAM; /* Stream socket */
+        hints.ai_flags = AI_PASSIVE;     /* For wildcard IP address */
+        hints.ai_protocol = 0;           /* Any protocol */
+        hints.ai_canonname = NULL;
+        hints.ai_addr = NULL;
+        hints.ai_next = NULL;
+
+        size_t pos = server.find(":");
+        char* service = (char *) "1073";
+        if (pos != std::string::npos) {
+            std::string serviceStr = server.substr(pos + 1);
+            service = (char*) serviceStr.c_str();
+            server = server.substr(0, pos);
+        }
+
+        int s = getaddrinfo(server.c_str(), service, &hints, &result);
+        if (s != 0) {
+            std::cerr << "getaddrinfo() failed: " << gai_strerror(s) << "\n";
+            return -1;
+        }
+
+        struct addrinfo* rp;
+        int sock;
+        for (rp = result; rp != NULL; rp = rp->ai_next) {
+            sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+            if (sock == -1) {
+                continue;
+            }
+
+            if (connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
+                break;                  /* Success */
+            }
+
+            close(sock);
+        }
+
+        if (rp == NULL) {
+            std::cerr << "could not connect to to server\n";
+            return -1;
+        }
+
+        return sock;
+    }
+}
+
 unsigned char Cli::getFrameSize() {
     if (yaesu) {
         switch (mode) {
@@ -198,7 +261,8 @@ void Cli::printUsage() {
         "Available options:\n" <<
         " -h, --help              show this message\n" <<
         " -v, --version           print version and exit\n" <<
-        " -y, --yaesu             activate YSF mode (allows in-stream switching of different mbe codecs)\n";
+        " -y, --yaesu             activate YSF mode (allows in-stream switching of different mbe codecs)\n" <<
+        " -s, --server            codecserver to connect to (default: \"" << server << "\")\n";
 }
 
 void Cli::printVersion() {
@@ -211,9 +275,10 @@ bool Cli::parseOptions(int argc, char** argv) {
         {"yaesu", no_argument, NULL, 'y'},
         {"version", no_argument, NULL, 'v'},
         {"help", no_argument, NULL, 'h'},
+        {"server", required_argument, NULL, 's'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yvh", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yvhs:", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 std::cerr << "enabling codec switching support for yaesu\n";
@@ -225,6 +290,9 @@ bool Cli::parseOptions(int argc, char** argv) {
             case 'h':
                 printUsage();
                 return false;
+            case 's':
+                server = std::string(optarg);
+                break;
         }
     }
 

@@ -2,6 +2,7 @@
 
 #include <codecserver/connection.hpp>
 #include <codecserver/proto/framing.pb.h>
+#include <string>
 
 using namespace CodecServer::proto;
 
@@ -16,11 +17,13 @@ namespace CodecServer {
             bool parseOptions(int argc, char** argv);
             void switchMode(unsigned char mode);
             unsigned char getFrameSize();
+            int buildSocket();
             Connection* connection;
             bool run = true;
             bool yaesu = false;
             unsigned char mode = 255;
             FramingHint framing;
+            std::string server = "/tmp/codecserver.sock";
     };
 
 }
