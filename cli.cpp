@@ -77,8 +77,6 @@ int Cli::main(int argc, char** argv) {
     char* in_buf = (char*) malloc(framing.channelbytes());
     fd_set read_fds;
     struct timeval tv;
-    tv.tv_sec = 10;
-    tv.tv_usec = 0;
     int rc;
     int nfds = std::max(fileno(stdin), sock) + 1;
 
@@ -86,6 +84,8 @@ int Cli::main(int argc, char** argv) {
         FD_ZERO(&read_fds);
         FD_SET(fileno(stdin), &read_fds);
         FD_SET(sock, &read_fds);
+        tv.tv_sec = 10;
+        tv.tv_usec = 0;
 
         rc = select(nfds, &read_fds, NULL, NULL, &tv);
         if (rc == -1) {
