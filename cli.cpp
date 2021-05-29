@@ -30,7 +30,7 @@ int Cli::main(int argc, char** argv) {
     connection = new Connection(sock);
     google::protobuf::Any* message = connection->receiveMessage();
     if (!message->Is<Handshake>()) {
-        std::cerr << "unexpected message: " << strerror(errno) << "\n";
+        std::cerr << "unexpected message\n";
         return 1;
     }
 
