@@ -10,6 +10,7 @@ Vcs-Git: https://github.com/jketterl/digiham.git
 Package: digiham
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: codecserver
 Description: Tools for decoding digital ham radio communication
  Simple set of command-line tools that is intended to be used to decode
  digital modulations used by ham radio operators. The main focus is on digital
