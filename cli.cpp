@@ -49,7 +49,7 @@ int Cli::main(int argc, char** argv) {
     Settings* settings = request.mutable_settings();
     settings->clear_directions();
     settings->mutable_directions()->Add(Settings_Direction_DECODE);
-    (*settings->mutable_args())["index"] = "33";
+    (*settings->mutable_args())["index"] = yaesu ? "34" : "33";
     connection->sendMessage(&request);
 
     message = connection->receiveMessage();
