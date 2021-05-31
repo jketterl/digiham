@@ -3,6 +3,7 @@
 #include <codecserver/proto/request.pb.h>
 #include <codecserver/proto/response.pb.h>
 #include <codecserver/proto/data.pb.h>
+#include <codecserver/proto/check.pb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -31,17 +32,49 @@ int Cli::main(int argc, char** argv) {
     google::protobuf::Any* message = connection->receiveMessage();
     if (!message->Is<Handshake>()) {
         std::cerr << "unexpected message\n";
+        delete connection;
         return 1;
     }
 
     Handshake handshake;
     message->UnpackTo(&handshake);
+    delete message;
 
     std::cerr << "received handshake from " << handshake.servername() << "\n";
 
     if (!connection->isCompatible(handshake.serverversion())) {
         std::cerr << "server version mismatch\n";
+        delete connection;
         return 1;
+    }
+
+    if (testOnly) {
+        Check check;
+        check.set_codec("ambe");
+        connection->sendMessage(&check);
+
+        message = connection->receiveMessage();
+
+        if (!message->Is<Response>()) {
+            std::cerr << "unexpected response\n";
+            delete message;
+            delete connection;
+            return 1;
+        }
+
+        Response response;
+        message->UnpackTo(&response);
+        delete message;
+
+        if (response.result() != Response_Status_OK) {
+            std::cerr << "server replied with error, message: " << response.message() << "\n";
+            delete connection;
+            return 1;
+        }
+
+        std::cerr << "server response ok\n";
+        delete connection;
+        return 0;
     }
 
     Request request;
@@ -60,6 +93,7 @@ int Cli::main(int argc, char** argv) {
 
     Response response;
     message->UnpackTo(&response);
+    delete message;
 
     if (response.result() != Response_Status_OK) {
         std::cerr << "server replied with error, message: " << response.message() << "\n";
@@ -74,7 +108,7 @@ int Cli::main(int argc, char** argv) {
 
     std::cerr << "server response OK, start decoding!\n";
 
-    char* in_buf = (char*) malloc(framing.channelbytes());
+    char* in_buf = (char*) malloc(1024);
     fd_set read_fds;
     struct timeval tv;
     int rc;
@@ -262,7 +296,8 @@ void Cli::printUsage() {
         " -h, --help              show this message\n" <<
         " -v, --version           print version and exit\n" <<
         " -y, --yaesu             activate YSF mode (allows in-stream switching of different mbe codecs)\n" <<
-        " -s, --server            codecserver to connect to (default: \"" << server << "\")\n";
+        " -s, --server            codecserver to connect to (default: \"" << server << "\")\n" <<
+        " -t, --test              test if codecserver can supply AMBE codec\n";
 }
 
 void Cli::printVersion() {
@@ -276,6 +311,7 @@ bool Cli::parseOptions(int argc, char** argv) {
         {"version", no_argument, NULL, 'v'},
         {"help", no_argument, NULL, 'h'},
         {"server", required_argument, NULL, 's'},
+        {"test", no_argument, NULL, 't'},
         { NULL, 0, NULL, 0 }
     };
     while ((c = getopt_long(argc, argv, "yvhs:", long_options, NULL)) != -1 ) {
@@ -292,6 +328,9 @@ bool Cli::parseOptions(int argc, char** argv) {
                 return false;
             case 's':
                 server = std::string(optarg);
+                break;
+            case 't':
+                testOnly = true;
                 break;
         }
     }

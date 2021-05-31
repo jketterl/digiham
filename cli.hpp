@@ -24,6 +24,7 @@ namespace CodecServer {
             unsigned char mode = 2;
             FramingHint framing;
             std::string server = "/tmp/codecserver.sock";
+            bool testOnly = false;
     };
 
 }
