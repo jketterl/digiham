@@ -6,15 +6,15 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include "dmr/bitmappings.h"
+#include "bitmappings.h"
 #include "version.h"
-#include "dmr/quadratic_residue.h"
-#include "dmr/hamming_16_11.h"
-#include "dmr/hamming_7_4.h"
-#include "dmr/golay_20_8.h"
-#include "dmr/hamming_13_9.h"
-#include "dmr/hamming_15_11.h"
-#include "dmr/bptc_196_96.h"
+#include "quadratic_residue.h"
+#include "hamming_16_11.h"
+#include "hamming_7_4.h"
+#include "golay_20_8.h"
+#include "hamming_13_9.h"
+#include "hamming_15_11.h"
+#include "bptc_196_96.h"
 #include "hamming_distance.h"
 #include "dumphex.h"
 

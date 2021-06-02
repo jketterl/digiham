@@ -5,16 +5,16 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdlib.h>
-#include "ysf/trellis.h"
-#include "ysf/fich.h"
-#include "ysf/bitmappings.h"
-#include "ysf/whitening.h"
+#include "trellis.h"
+#include "fich.h"
+#include "bitmappings.h"
+#include "whitening.h"
 #include "version.h"
-#include "ysf/golay_24_12.h"
-#include "ysf/crc16.h"
-#include "ysf/commands.h"
-#include "ysf/radio_types.h"
-#include "ysf/gps.h"
+#include "golay_24_12.h"
+#include "crc16.h"
+#include "commands.h"
+#include "radio_types.h"
+#include "gps.h"
 #include "hamming_distance.h"
 
 #define BUF_SIZE 128

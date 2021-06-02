@@ -1,0 +1,3 @@
+add_executable(digitalvoice_filter digitalvoice_filter.c)
+target_link_libraries(digitalvoice_filter digiham)
+install(TARGETS digitalvoice_filter DESTINATION ${CMAKE_INSTALL_BINDIR})

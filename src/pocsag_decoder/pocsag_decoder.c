@@ -8,7 +8,7 @@
 #include "version.h"
 #include "hamming_distance.h"
 #include "dumphex.h"
-#include "pocsag/bch_31_21.h"
+#include "bch_31_21.h"
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
