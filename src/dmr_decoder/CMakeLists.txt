@@ -1,3 +1,12 @@
 add_executable(dmr_decoder dmr_decoder.c bptc_196_96.c golay_20_8.c hamming_7_4.c hamming_13_9.c hamming_15_11.c hamming_16_11.c quadratic_residue.c)
 target_link_libraries(dmr_decoder digiham)
 install(TARGETS dmr_decoder DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_executable(quadratic_residue_syndrome_generator quadratic_residue.c quadratic_residue_syndrome_generator.c)
+    add_executable(hamming_16_11_syndrome_generator hamming_16_11.c hamming_16_11_syndrome_generator.c)
+    add_executable(hamming_7_4_syndrome_generator hamming_7_4.c hamming_7_4_syndrome_generator.c)
+    add_executable(golay_20_8_syndrome_generator golay_20_8.c golay_20_8_syndrome_generator.c)
+    add_executable(hamming_15_11_syndrome_generator hamming_15_11.c hamming_15_11_syndrome_generator.c)
+    add_executable(hamming_13_9_syndrome_generator hamming_13_9.c hamming_13_9_syndrome_generator.c)
+endif()
