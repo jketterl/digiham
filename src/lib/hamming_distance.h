@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 
 static const unsigned char lookuptable[256] =
 {
@@ -8,4 +9,4 @@ static const unsigned char lookuptable[256] =
     B6(0), B6(1), B6(1), B6(2)
 };
 
-int symbol_hamming_distance(uint8_t potential_sync[], uint8_t sync[], int size);
+unsigned int hamming_distance(uint8_t* potential_sync, uint8_t* sync, size_t size);

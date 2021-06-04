@@ -127,19 +127,19 @@ int ringbuffer_bytes() {
 }
 
 int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
-    if (symbol_hamming_distance(potential_sync, dmr_bs_data_sync, SYNC_SIZE) <= 3) {
+    if (hamming_distance(potential_sync, dmr_bs_data_sync, SYNC_SIZE) <= 3) {
         //fprintf(stderr, "found a bs data sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_DATA;
     }
-    if (symbol_hamming_distance(potential_sync, dmr_bs_voice_sync, SYNC_SIZE) <= 3) {
+    if (hamming_distance(potential_sync, dmr_bs_voice_sync, SYNC_SIZE) <= 3) {
         //fprintf(stderr, "found a bs voice sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_VOICE;
     }
-    if (symbol_hamming_distance(potential_sync, dmr_ms_data_sync, SYNC_SIZE) <= 3) {
+    if (hamming_distance(potential_sync, dmr_ms_data_sync, SYNC_SIZE) <= 3) {
         //fprintf(stderr, "found a ms data sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_DATA;
     }
-    if (symbol_hamming_distance(potential_sync, dmr_ms_voice_sync, SYNC_SIZE) <= 3) {
+    if (hamming_distance(potential_sync, dmr_ms_voice_sync, SYNC_SIZE) <= 3) {
         //fprintf(stderr, "found a ms voice sync at pos %i\n", ringbuffer_read_pos);
         return SYNCTYPE_VOICE;
     }

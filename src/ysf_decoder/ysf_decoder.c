@@ -141,7 +141,7 @@ int ringbuffer_bytes() {
 }
 
 int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
-    if (symbol_hamming_distance(potential_sync, ysf_sync, SYNC_SIZE) <= 3) {
+    if (hamming_distance(potential_sync, ysf_sync, SYNC_SIZE) <= 3) {
         return SYNCTYPE_AVAILABLE;
     }
     return SYNCTYPE_UNKNOWN;

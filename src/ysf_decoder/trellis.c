@@ -1,4 +1,5 @@
 #include "trellis.h"
+#include "hamming_distance.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,16 +23,6 @@ uint8_t trellis_transitions[16][2] = {
     {0b10, 0b01}, // 1110
     {0b01, 0b10}  // 1111
 };
-
-uint8_t hamming_distance(uint8_t a, uint8_t b) {
-    uint8_t xored = a ^ b;
-    uint8_t i;
-    uint8_t result = 0;
-    for (i = 0; i < 8; i++) {
-        result += (xored >> i) & 1;
-    }
-    return result;
-}
 
 typedef struct {
     uint8_t metric;
@@ -75,7 +66,7 @@ uint8_t decode_trellis(uint8_t *input, uint8_t size, uint8_t *output) {
                 uint8_t previous_state = (( i << 1 ) & 0b1110 ) | k;
                 uint8_t transition = trellis_transitions[previous_state][outbit];
                 branch to_evaluate = branches[previous_state];
-                uint8_t metric = to_evaluate.metric + hamming_distance(in_transition, transition);
+                uint8_t metric = to_evaluate.metric + hamming_distance(&in_transition, &transition, 1);
                 //fprintf(stderr, " metric for previous %i: %i", previous_state, metric);
 
                 if (k == 0 || metric < best_metric) {
