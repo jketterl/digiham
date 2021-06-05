@@ -154,3 +154,7 @@ void Header::descramble(char* input, char* output) {
         wsr = ((wsr & 0b1111110) >> 1) | (wb << 6);
     }
 }
+
+bool Header::isData() {
+    return (data[0] >> 7) & 1;
+}

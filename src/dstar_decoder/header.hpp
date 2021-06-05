@@ -9,6 +9,8 @@ namespace Digiham::DStar {
 
             Header(char* data);
             ~Header();
+            bool isData();
+            bool isVoice() { return !isData(); }
         private:
             static void deinterleave(char* in, char* out);
             static unsigned int viterbi_decode(char* in, char* out);
