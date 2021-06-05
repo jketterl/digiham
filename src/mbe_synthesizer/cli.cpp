@@ -30,6 +30,13 @@ int Cli::main(int argc, char** argv) {
 
     connection = new Connection(sock);
     google::protobuf::Any* message = connection->receiveMessage();
+
+    if (message == nullptr) {
+        std::cerr << "no response\n";
+        delete connection;
+        return 1;
+    }
+
     if (!message->Is<Handshake>()) {
         std::cerr << "unexpected message\n";
         delete connection;
@@ -54,6 +61,12 @@ int Cli::main(int argc, char** argv) {
         connection->sendMessage(&check);
 
         message = connection->receiveMessage();
+
+        if (message == nullptr) {
+            std::cerr << "no response\n";
+            delete connection;
+            return 1;
+        }
 
         if (!message->Is<Response>()) {
             std::cerr << "unexpected response\n";
@@ -82,10 +95,22 @@ int Cli::main(int argc, char** argv) {
     Settings* settings = request.mutable_settings();
     settings->clear_directions();
     settings->mutable_directions()->Add(Settings_Direction_DECODE);
-    (*settings->mutable_args())["index"] = yaesu ? "34" : "33";
+    if (yaesu) {
+        (*settings->mutable_args())["index"] = "34";
+    } else if (dstar) {
+        (*settings->mutable_args())["ratep"] = "0130:0763:4000:0000:0000:0048";
+    } else {
+        (*settings->mutable_args())["index"] = "33";
+    }
     connection->sendMessage(&request);
 
     message = connection->receiveMessage();
+
+    if (message == nullptr) {
+        std::cerr << "no response\n";
+        return 1;
+    }
+
     if (!message->Is<Response>()) {
         std::cerr << "response error\n";
         return 1;
@@ -143,7 +168,10 @@ int Cli::main(int argc, char** argv) {
             }
             if (FD_ISSET(sock, &read_fds)) {
                 google::protobuf::Any* message = connection->receiveMessage();
-                if (message->Is<SpeechData>()) {
+                if (message == nullptr) {
+                    std::cerr << "no response\n";
+                    run = false;
+                } else if (message->Is<SpeechData>()) {
                     SpeechData* data = new SpeechData();
                     message->UnpackTo(data);
                     std::string output = data->data();
@@ -296,6 +324,7 @@ void Cli::printUsage() {
         " -h, --help              show this message\n" <<
         " -v, --version           print version and exit\n" <<
         " -y, --yaesu             activate YSF mode (allows in-stream switching of different mbe codecs)\n" <<
+        " -d, --dstar             activate D-Star compatible codec\n" <<
         " -s, --server            codecserver to connect to (default: \"" << server << "\")\n" <<
         " -t, --test              test if codecserver can supply AMBE codec\n";
 }
@@ -308,17 +337,22 @@ bool Cli::parseOptions(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
         {"yaesu", no_argument, NULL, 'y'},
+        {"dstar", no_argument, NULL, 'd'},
         {"version", no_argument, NULL, 'v'},
         {"help", no_argument, NULL, 'h'},
         {"server", required_argument, NULL, 's'},
         {"test", no_argument, NULL, 't'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yvhs:", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yvhs:d", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 std::cerr << "enabling codec switching support for yaesu\n";
                 yaesu = true;
+                break;
+            case 'd':
+                std::cerr << "enabling d-star codec\n";
+                dstar = true;
                 break;
             case 'v':
                 printVersion();

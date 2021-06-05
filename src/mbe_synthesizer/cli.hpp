@@ -21,6 +21,7 @@ namespace CodecServer {
             Connection* connection;
             bool run = true;
             bool yaesu = false;
+            bool dstar = false;
             unsigned char mode = 2;
             FramingHint framing;
             std::string server = "/tmp/codecserver.sock";
