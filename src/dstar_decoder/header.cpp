@@ -1,4 +1,5 @@
 #include "header.hpp"
+#include "scrambler.hpp"
 #include <cstdlib>
 #include <cstring>
 
@@ -20,8 +21,10 @@ Header::~Header() {
 }
 
 Header* Header::parse(char* raw) {
+    Scrambler* scrambler = new Scrambler();
     char* descrambled = (char*) malloc(sizeof(char) * Header::bits);
-    descramble(raw, descrambled);
+    scrambler->scramble(raw, descrambled, Header::bits);
+    delete scrambler;
 
     char* deinterleaved = (char*) malloc(sizeof(char) * Header::bits);
     deinterleave(descrambled, deinterleaved);
@@ -137,22 +140,6 @@ unsigned int Header::viterbi_decode(char* input, char* output) {
     free(branches);
 
     return best_metric;
-}
-
-void Header::descramble(char* input, char* output) {
-    // init with 1s according to spec
-    uint8_t wsr = 0b1111111;
-    memset(output, 0, 660);
-    for (int i = 0; i < 660; i++) {
-        // calculate whitening bit
-        bool wb = (wsr & 1) ^ ((wsr >> 3) & 1);
-
-        // apply
-        output[i] = (input[i] & 1) ^ wb;
-
-        // rotate
-        wsr = ((wsr & 0b1111110) >> 1) | (wb << 6);
-    }
 }
 
 bool Header::isData() {

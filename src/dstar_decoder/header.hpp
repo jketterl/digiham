@@ -14,7 +14,6 @@ namespace Digiham::DStar {
         private:
             static void deinterleave(char* in, char* out);
             static unsigned int viterbi_decode(char* in, char* out);
-            static void descramble(char* in, char*out);
             static const unsigned char trellis_transitions[4][2];
 
             char* data;
