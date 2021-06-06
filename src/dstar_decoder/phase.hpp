@@ -14,13 +14,7 @@ namespace Digiham::DStar {
         public:
             virtual int getRequiredData() = 0;
             virtual Phase* process(Ringbuffer* data, size_t& read_pos) = 0;
-    };
-
-    class SyncPhase: public Phase {
-        public:
-            int getRequiredData() override { return SYNC_SIZE; }
-            Phase* process(Ringbuffer* data, size_t& read_pos) override;
-        private:
+        protected:
             const uint8_t header_sync[SYNC_SIZE] = {
                 // part of the bitsync
                 // the repeated 10s should always come ahead of the actual sync sequence, so we can use that to get
@@ -29,22 +23,6 @@ namespace Digiham::DStar {
                 // actual sync
                 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0
             };
-    };
-
-    class HeaderPhase: public Phase {
-        public:
-            int getRequiredData() override { return Header::bits; }
-            Phase* process(Ringbuffer* data, size_t& read_pos) override;
-    };
-
-    class VoicePhase: public Phase {
-        public:
-            int getRequiredData() override { return 72 + 24 + 24; }
-            Phase* process(Ringbuffer* data, size_t& read_pos) override;
-        private:
-            bool isSyncDue();
-            int frameCount = 0;
-            int syncMissing = 0;
             const uint8_t voice_sync[SYNC_SIZE] = {
                 // 10 bits of 10
                 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
@@ -58,6 +36,30 @@ namespace Digiham::DStar {
                 // 000100110101111 + 0,
                 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0,
             };
+    };
+
+    class SyncPhase: public Phase {
+        public:
+            int getRequiredData() override { return SYNC_SIZE; }
+            Phase* process(Ringbuffer* data, size_t& read_pos) override;
+    };
+
+    class HeaderPhase: public Phase {
+        public:
+            int getRequiredData() override { return Header::bits; }
+            Phase* process(Ringbuffer* data, size_t& read_pos) override;
+    };
+
+    class VoicePhase: public Phase {
+        public:
+            VoicePhase(): Phase() {}
+            VoicePhase(int frameCount): Phase() { this->frameCount = frameCount; }
+            int getRequiredData() override { return 72 + 24 + 24; }
+            Phase* process(Ringbuffer* data, size_t& read_pos) override;
+        private:
+            bool isSyncDue();
+            int frameCount = 0;
+            int syncMissing = 0;
     };
 
 }

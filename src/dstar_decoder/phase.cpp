@@ -15,10 +15,16 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
         uint8_t potential_sync[SYNC_SIZE];
         data->read((char*) potential_sync, read_pos, SYNC_SIZE);
 
-        if (hamming_distance(potential_sync, (uint8_t*) SyncPhase::header_sync, SYNC_SIZE) <= 2) {
-            std::cerr << "found a sync at pos " << read_pos << "\n";
+        if (hamming_distance(potential_sync, (uint8_t*) header_sync, SYNC_SIZE) <= 2) {
+            std::cerr << "found a header sync at pos " << read_pos << "\n";
             data->advance(read_pos, SYNC_SIZE);
             return new HeaderPhase();
+        }
+
+        if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
+            std::cerr << "found a voice sync at pos " << read_pos << "\n";
+            data->advance(read_pos, SYNC_SIZE);
+            return new VoicePhase(20);
         }
 
         data->advance(read_pos, 1);
@@ -69,7 +75,7 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
     data->read((char*) data_frame, read_pos, 48);
     data->advance(read_pos, 24);
 
-    if (hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) <= 1) {
+    if (hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) == 0) {
         std::cerr << "terminator received\n";
         // move another 24 since it's clear that this is all used up now
         data->advance(read_pos, 24);
@@ -77,7 +83,7 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
     }
     if (isSyncDue()) {
         if (hamming_distance(data_frame, (uint8_t*) voice_sync, SYNC_SIZE) > 1) {
-            if (syncMissing++ > 3) {
+            if (syncMissing++ > 2) {
                 std::cerr << "too many missed syncs, ending voice mode\n";
                 return new SyncPhase();
             }
