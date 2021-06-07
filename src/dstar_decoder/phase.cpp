@@ -34,8 +34,8 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
 }
 
 Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
-    char* raw = (char*) malloc(sizeof(char) * Header::bits);
-    data->read(raw, read_pos, Header::bits);
+    unsigned char* raw = (unsigned char*) malloc(sizeof(unsigned char) * Header::bits);
+    data->read((char*) raw, read_pos, Header::bits);
 
     Header* header = Header::parse(raw);
     free(raw);
@@ -113,11 +113,11 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
         resetFrames();
     } else {
         scrambler->reset();
-        char* data_descrambled = (char*) malloc(sizeof(char) * 24);
-        scrambler->scramble((char*) data_frame, data_descrambled, 24);
+        unsigned char* data_descrambled = (unsigned char*) malloc(sizeof(unsigned char) * 24);
+        scrambler->scramble(data_frame, data_descrambled, 24);
 
-        char* data_bytes = (char*) malloc(sizeof(char) * 3);
-        memset(data_bytes, 0, sizeof(char) * 3);
+        unsigned char* data_bytes = (unsigned char*) malloc(sizeof(char) * 3);
+        memset(data_bytes, 0, sizeof(unsigned char) * 3);
         for (int i = 0; i < 24; i++) {
             data_bytes[i / 8] |= data_descrambled[i] << ( i % 8 );
         }
@@ -145,7 +145,7 @@ void VoicePhase::resetFrames() {
     headerCount = 0;
 }
 
-void VoicePhase::collectDataFrame(char* data) {
+void VoicePhase::collectDataFrame(unsigned char* data) {
     memcpy(collected_data + (frameCount % 2) * 3, data, 3);
     if (frameCount % 2 == 0) {
         return;
@@ -171,8 +171,8 @@ void VoicePhase::collectDataFrame(char* data) {
         }
         case 0x03: {
             int bytes = collected_data[0] & 0x0F;
-            simpleData += std::string(collected_data + 1, bytes);
             if (bytes > 5) break;
+            simpleData += std::string((char*) collected_data + 1, bytes);
             break;
         }
         case 0x00:
@@ -212,7 +212,7 @@ void VoicePhase::parseFrameData() {
             ss << std::hex << something.substr(5, 4);
             ss >> checksum;
 
-            bool valid = Crc::isCrcValid((char*) something.substr(10).c_str(), something.length() - 10, checksum);
+            bool valid = Crc::isCrcValid((unsigned char*) something.substr(10).c_str(), something.length() - 10, checksum);
             if (valid) {
                 std::cerr << "parsed DPRS: " << something.substr(10, something.length() - 11) << "\n";
             }

@@ -7,7 +7,7 @@ void Scrambler::reset() {
     shift_register = 0b1111111;
 }
 
-void Scrambler::scramble(char* input, char* output, size_t len) {
+void Scrambler::scramble(unsigned char* input, unsigned char* output, size_t len) {
     memset(output, 0, len);
     for (int i = 0; i < len; i++) {
         // calculate whitening bit

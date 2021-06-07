@@ -62,15 +62,15 @@ namespace Digiham::DStar {
         private:
             bool isSyncDue();
             void resetFrames();
-            void collectDataFrame(char* data);
+            void collectDataFrame(unsigned char* data);
             void parseFrameData();
             int frameCount;
             int syncMissing = 0;
             Scrambler* scrambler;
-            char collected_data[6] = { 0 };
-            char message[20] = { 0 };
+            unsigned char collected_data[6] = { 0 };
+            unsigned char message[20] = { 0 };
             unsigned char messageBlocks = 0;
-            char header[41] = { 0 };
+            unsigned char header[41] = { 0 };
             unsigned char headerCount = 0;
             std::string simpleData = "";
     };

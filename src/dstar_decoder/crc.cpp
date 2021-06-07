@@ -3,7 +3,7 @@
 
 using namespace Digiham::DStar;
 
-bool Crc::isCrcValid(char* data, size_t len, uint16_t to_check) {
+bool Crc::isCrcValid(unsigned char* data, size_t len, uint16_t to_check) {
     uint16_t checksum = 0xFFFF;
 
     for (int k = 0; k < len; k++) {

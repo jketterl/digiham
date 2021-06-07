@@ -6,10 +6,10 @@ namespace Digiham::DStar {
 
     class Header {
         public:
-            static Header* parse(char* raw);
+            static Header* parse(unsigned char* raw);
             static const unsigned int bits = 660;
 
-            Header(char* data);
+            Header(unsigned char* data);
             ~Header();
             bool isCrcValid();
             bool isData();
@@ -20,13 +20,13 @@ namespace Digiham::DStar {
             std::string getOwnCallsign();
             std::string toString();
         private:
-            static void deinterleave(char* in, char* out);
-            static unsigned int viterbi_decode(char* in, char* out);
+            static void deinterleave(unsigned char* in, unsigned char* out);
+            static unsigned int viterbi_decode(unsigned char* in, unsigned char* out);
             static const unsigned char trellis_transitions[4][2];
 
             std::string rtrim(std::string input);
 
-            char* data;
+            unsigned char* data;
     };
 
 }

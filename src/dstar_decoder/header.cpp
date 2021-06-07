@@ -4,15 +4,13 @@
 #include <cstring>
 #include <sstream>
 
-#include <iostream>
-
 extern "C" {
 #include "hamming_distance.h"
 }
 
 using namespace Digiham::DStar;
 
-Header::Header(char* data) {
+Header::Header(unsigned char* data) {
     this->data = data;
 }
 
@@ -20,19 +18,18 @@ Header::~Header() {
     free(data);
 }
 
-Header* Header::parse(char* raw) {
+Header* Header::parse(unsigned char* raw) {
     Scrambler* scrambler = new Scrambler();
-    char* descrambled = (char*) malloc(sizeof(char) * Header::bits);
+    unsigned char* descrambled = (unsigned char*) malloc(sizeof(unsigned char) * Header::bits);
     scrambler->scramble(raw, descrambled, Header::bits);
     delete scrambler;
 
-    char* deinterleaved = (char*) malloc(sizeof(char) * Header::bits);
+    unsigned char* deinterleaved = (unsigned char*) malloc(sizeof(unsigned char) * Header::bits);
     deinterleave(descrambled, deinterleaved);
     free(descrambled);
 
-    char* decoded = (char*) malloc(sizeof(char) * ((Header::bits / 2 + 7) / 8));
+    unsigned char* decoded = (unsigned char*) malloc(sizeof(unsigned char) * ((Header::bits / 2 + 7) / 8));
     unsigned int errors = viterbi_decode(deinterleaved, decoded);
-    std::cerr << "header viterbi errors: " << errors << "\n";
     free(deinterleaved);
 
     if (errors < 10) {
@@ -47,7 +44,7 @@ Header* Header::parse(char* raw) {
     return nullptr;
 }
 
-void Header::deinterleave(char* in, char* out) {
+void Header::deinterleave(unsigned char* in, unsigned char* out) {
     memset(out, 0, (Header::bits + 7) / 8);
 
     for (int i = 0; i < 12; i++){
@@ -75,7 +72,7 @@ const uint8_t Header::trellis_transitions[4][2] = {
     {0b01, 0b10}, // 11
 };
 
-unsigned int Header::viterbi_decode(char* input, char* output) {
+unsigned int Header::viterbi_decode(unsigned char* input, unsigned char* output) {
     uint8_t shift = 0;
 
     uint8_t i;
@@ -157,19 +154,19 @@ std::string Header::rtrim(std::string input) {
 }
 
 std::string Header::getDestinationRepeater() {
-    return rtrim(std::string(data + 3, 8));
+    return rtrim(std::string((char*) data + 3, 8));
 }
 
 std::string Header::getDepartureRepeater() {
-    return rtrim(std::string(data + 11, 8));
+    return rtrim(std::string((char*) data + 11, 8));
 }
 
 std::string Header::getCompanion() {
-    return rtrim(std::string(data + 19, 8));
+    return rtrim(std::string((char*) data + 19, 8));
 }
 
 std::string Header::getOwnCallsign() {
-    return rtrim(std::string(data + 27, 8)) + "/" + rtrim(std::string(data + 35, 4));
+    return rtrim(std::string((char*) data + 27, 8)) + "/" + rtrim(std::string((char*) data + 35, 4));
 }
 
 std::string Header::toString() {
