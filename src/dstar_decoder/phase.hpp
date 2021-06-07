@@ -5,6 +5,7 @@
 #include "scrambler.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 #define SYNC_SIZE 24
 #define TERMINATOR_SIZE 48
@@ -60,9 +61,18 @@ namespace Digiham::DStar {
             Phase* process(Ringbuffer* data, size_t& read_pos) override;
         private:
             bool isSyncDue();
+            void resetFrames();
+            void collectDataFrame(char* data);
+            void parseFrameData();
             int frameCount;
             int syncMissing = 0;
             Scrambler* scrambler;
+            char collected_data[6] = { 0 };
+            char message[20] = { 0 };
+            unsigned char messageBlocks = 0;
+            char header[41] = { 0 };
+            unsigned char headerCount = 0;
+            std::string simpleData = "";
     };
 
 }

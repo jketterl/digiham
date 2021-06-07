@@ -2,11 +2,11 @@
 #include "scrambler.hpp"
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 
 #include <iostream>
 
 extern "C" {
-#include "dumphex.h"
 #include "hamming_distance.h"
 }
 
@@ -17,7 +17,7 @@ Header::Header(char* data) {
 }
 
 Header::~Header() {
-    delete data;
+    free(data);
 }
 
 Header* Header::parse(char* raw) {
@@ -35,11 +35,12 @@ Header* Header::parse(char* raw) {
     std::cerr << "header viterbi errors: " << errors << "\n";
     free(deinterleaved);
 
-    // TODO: header FEC in P_FCS
-
     if (errors < 10) {
-        DumpHex(decoded, 41);
-        return new Header(decoded);
+        Header* header = new Header(decoded);
+        if (header->isCrcValid()) {
+            return new Header(decoded);
+        }
+        delete header;
     }
 
     free(decoded);
@@ -142,6 +143,58 @@ unsigned int Header::viterbi_decode(char* input, char* output) {
     return best_metric;
 }
 
+bool Header::isCrcValid() {
+    uint16_t checksum = 0xFFFF;
+
+    for (int k = 0; k < 39; k++) {
+        for (int i = 0; i < 8; i++) {
+            bool input = (data[k] >> i) & 1;
+            checksum ^= input;
+            if (checksum & 1) {
+                checksum = (checksum >> 1) ^ 0x8408;
+            } else {
+                checksum >>= 1;
+            }
+        }
+    }
+
+    // invert at the and
+    checksum ^= 0xFFFF;
+
+    return memcmp(&checksum, data + 39, 2) == 0;
+}
+
 bool Header::isData() {
     return (data[0] >> 7) & 1;
+}
+
+std::string Header::rtrim(std::string input) {
+    input.erase(input.find_last_not_of(' ') + 1);
+    return input;
+}
+
+std::string Header::getDestinationRepeater() {
+    return rtrim(std::string(data + 3, 8));
+}
+
+std::string Header::getDepartureRepeater() {
+    return rtrim(std::string(data + 11, 8));
+}
+
+std::string Header::getCompanion() {
+    return rtrim(std::string(data + 19, 8));
+}
+
+std::string Header::getOwnCallsign() {
+    return rtrim(std::string(data + 27, 8)) + "/" + rtrim(std::string(data + 35, 4));
+}
+
+std::string Header::toString() {
+    std::stringstream ss;
+    ss << "DST RPT: \"" << getDestinationRepeater() << "\" " <<
+          "DPT RPT: \"" << getDepartureRepeater() << "\" " <<
+          "COMPANION: \"" << getCompanion() << "\" " <<
+          "CALLSIGN: \"" << getOwnCallsign() << "\" ";
+
+    return ss.str();
 }

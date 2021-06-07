@@ -43,6 +43,14 @@ Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
         return new SyncPhase();
     }
 
+    if (!header->isCrcValid()) {
+        delete header;
+        data->advance(read_pos, 1);
+        return new SyncPhase();
+    }
+
+    std::cerr << "found header: " << header->toString() << "\n";
+
     data->advance(read_pos, Header::bits);
 
     if (header->isVoice()) {
@@ -100,10 +108,9 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
                 return new SyncPhase();
             }
         }
-        frameCount = 0;
+        parseFrameData();
+        resetFrames();
     } else {
-        frameCount++;
-
         scrambler->reset();
         char* data_descrambled = (char*) malloc(sizeof(char) * 24);
         scrambler->scramble((char*) data_frame, data_descrambled, 24);
@@ -114,8 +121,10 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
             data_bytes[i / 8] |= data_descrambled[i] << ( i % 8 );
         }
         free(data_descrambled);
-        //DumpHex(data_bytes, 3);
+        collectDataFrame(data_bytes);
         free(data_bytes);
+
+        frameCount++;
     }
 
     free(data_frame);
@@ -125,4 +134,74 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
 
 bool VoicePhase::isSyncDue() {
     return frameCount >= 20;
+}
+
+void VoicePhase::resetFrames() {
+    frameCount = 0;
+    memset(message, 0, 20);
+    messageBlocks = 0;
+    memset(header, 0, 41);
+    headerCount = 0;
+}
+
+void VoicePhase::collectDataFrame(char* data) {
+    memcpy(collected_data + (frameCount % 2) * 3, data, 3);
+    if (frameCount % 2 == 0) {
+        return;
+    }
+
+    switch (collected_data[0] >> 4) {
+        case 0x04: {
+            // 20-character d-star message
+            int block = collected_data[0] & 0x0F;
+            memcpy(message + block * 5, collected_data + 1, 5);
+            messageBlocks |= 1 << block;
+            break;
+        }
+        case 0x05: {
+            // inline header data
+            int bytes = collected_data[0] & 0x0F;
+            if (headerCount + bytes > 41) break;
+            memcpy(header + headerCount, collected_data + 1, bytes);
+            headerCount += bytes;
+            break;
+        }
+        case 0x03: {
+            int bytes = collected_data[0] & 0x0F;
+            simpleData += std::string(collected_data + 1, bytes);
+            break;
+        }
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        // 0x66 is an explicitly empty frame... doesn't make a difference here
+        case 0x06:
+        case 0x07:
+        case 0x0A:
+        case 0x0B:
+        case 0x0D:
+        case 0x0E:
+            // reserved. ignore.
+            break;
+        default:
+            std::cerr << "received unknown data (mini header = " << std::hex << +collected_data[0] << ")\n";
+    }
+}
+
+void VoicePhase::parseFrameData() {
+    if (messageBlocks == 0x0F) {
+        std::cerr << "parsed message: \"" << message << "\"\n";
+    }
+    if (headerCount == 41) {
+        Header* h = new Header(header);
+        if (h->isCrcValid()) {
+            std::cerr << "inline header: " << h->toString() << "\n";
+        }
+    }
+    size_t pos = simpleData.find("\r");
+    if (pos != std::string::npos) {
+        std::string something = simpleData.substr(0, pos);
+        //std::cerr << "parsed simple data: " << something << "\n";
+        simpleData = simpleData.substr(pos + 1);
+    }
 }
