@@ -1,6 +1,6 @@
 #include "header.hpp"
 #include "scrambler.hpp"
-#include <cstdlib>
+#include "crc.hpp"
 #include <cstring>
 #include <sstream>
 
@@ -144,24 +144,7 @@ unsigned int Header::viterbi_decode(char* input, char* output) {
 }
 
 bool Header::isCrcValid() {
-    uint16_t checksum = 0xFFFF;
-
-    for (int k = 0; k < 39; k++) {
-        for (int i = 0; i < 8; i++) {
-            bool input = (data[k] >> i) & 1;
-            checksum ^= input;
-            if (checksum & 1) {
-                checksum = (checksum >> 1) ^ 0x8408;
-            } else {
-                checksum >>= 1;
-            }
-        }
-    }
-
-    // invert at the and
-    checksum ^= 0xFFFF;
-
-    return memcmp(&checksum, data + 39, 2) == 0;
+    return Crc::isCrcValid(data, 39, *((uint16_t*) (data + 39)));
 }
 
 bool Header::isData() {

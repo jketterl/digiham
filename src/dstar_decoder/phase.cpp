@@ -1,6 +1,8 @@
 #include "phase.hpp"
+#include "crc.hpp"
 #include <iostream>
 #include <cstring>
+#include <sstream>
 
 extern "C" {
 #include "hamming_distance.h"
@@ -200,8 +202,20 @@ void VoicePhase::parseFrameData() {
     }
     size_t pos = simpleData.find("\r");
     if (pos != std::string::npos) {
-        std::string something = simpleData.substr(0, pos);
-        //std::cerr << "parsed simple data: " << something << "\n";
+        std::string something = simpleData.substr(0, pos + 1);
+        if (something.length() >= 10 && something.substr(0, 5) == "$$CRC" && something.at(9) == ',') {
+            std::stringstream ss;
+            uint16_t checksum;
+            ss << std::hex << something.substr(5, 4);
+            ss >> checksum;
+
+            bool valid = Crc::isCrcValid((char*) something.substr(10).c_str(), something.length() - 10, checksum);
+            if (valid) {
+                std::cerr << "parsed DPRS: " << something.substr(10, something.length() - 11) << "\n";
+            }
+        } else {
+            std::cerr << "parsed simple data: " << something << "\n";
+        }
         simpleData = simpleData.substr(pos + 1);
     }
 }
