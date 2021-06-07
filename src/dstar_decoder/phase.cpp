@@ -18,7 +18,6 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
         data->read((char*) potential_sync, read_pos, SYNC_SIZE);
 
         if (hamming_distance(potential_sync, (uint8_t*) header_sync, SYNC_SIZE) <= 2) {
-            std::cerr << "found a header sync at pos " << read_pos << "\n";
             data->advance(read_pos, SYNC_SIZE);
             return new HeaderPhase();
         }
@@ -156,6 +155,7 @@ void VoicePhase::collectDataFrame(char* data) {
         case 0x04: {
             // 20-character d-star message
             int block = collected_data[0] & 0x0F;
+            if (block > 3) break;
             memcpy(message + block * 5, collected_data + 1, 5);
             messageBlocks |= 1 << block;
             break;
@@ -163,6 +163,7 @@ void VoicePhase::collectDataFrame(char* data) {
         case 0x05: {
             // inline header data
             int bytes = collected_data[0] & 0x0F;
+            if (bytes > 5) break;
             if (headerCount + bytes > 41) break;
             memcpy(header + headerCount, collected_data + 1, bytes);
             headerCount += bytes;
@@ -171,6 +172,7 @@ void VoicePhase::collectDataFrame(char* data) {
         case 0x03: {
             int bytes = collected_data[0] & 0x0F;
             simpleData += std::string(collected_data + 1, bytes);
+            if (bytes > 5) break;
             break;
         }
         case 0x00:
@@ -183,6 +185,7 @@ void VoicePhase::collectDataFrame(char* data) {
         case 0x0B:
         case 0x0D:
         case 0x0E:
+        case 0x0F:
             // reserved. ignore.
             break;
         default:
