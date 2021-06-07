@@ -8,8 +8,8 @@ void Scrambler::reset() {
 }
 
 void Scrambler::scramble(char* input, char* output, size_t len) {
-    memset(output, 0, 660);
-    for (int i = 0; i < 660; i++) {
+    memset(output, 0, len);
+    for (int i = 0; i < len; i++) {
         // calculate whitening bit
         bool wb = (shift_register & 1) ^ ((shift_register >> 3) & 1);
 

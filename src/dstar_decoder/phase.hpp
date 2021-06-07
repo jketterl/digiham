@@ -2,6 +2,7 @@
 
 #include "ringbuffer.hpp"
 #include "header.hpp"
+#include "scrambler.hpp"
 #include <cstddef>
 #include <cstdint>
 
@@ -52,14 +53,16 @@ namespace Digiham::DStar {
 
     class VoicePhase: public Phase {
         public:
-            VoicePhase(): Phase() {}
-            VoicePhase(int frameCount): Phase() { this->frameCount = frameCount; }
+            VoicePhase();
+            VoicePhase(int frameCount);
+            ~VoicePhase();
             int getRequiredData() override { return 72 + 24 + 24; }
             Phase* process(Ringbuffer* data, size_t& read_pos) override;
         private:
             bool isSyncDue();
-            int frameCount = 0;
+            int frameCount;
             int syncMissing = 0;
+            Scrambler* scrambler;
     };
 
 }

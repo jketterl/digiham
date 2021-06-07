@@ -24,7 +24,7 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
         if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
             std::cerr << "found a voice sync at pos " << read_pos << "\n";
             data->advance(read_pos, SYNC_SIZE);
-            return new VoicePhase(20);
+            return new VoicePhase(0);
         }
 
         data->advance(read_pos, 1);
@@ -52,6 +52,18 @@ Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
 
     delete(header);
     return new SyncPhase();
+}
+
+VoicePhase::VoicePhase(int frameCount): Phase(), frameCount(frameCount) {
+    scrambler = new Scrambler();
+}
+
+// default set up is with a sync due immediately, which is what we'd expect after a header
+// when starting after a voice sync, pass frameCount = 0 to the constructor above
+VoicePhase::VoicePhase(): VoicePhase(21) {}
+
+VoicePhase::~VoicePhase() {
+    delete scrambler;
 }
 
 Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
@@ -88,15 +100,29 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
                 return new SyncPhase();
             }
         }
-        frameCount = 20;
+        frameCount = 0;
     } else {
-        frameCount--;
-        if (frameCount < 0) frameCount = 21;
+        frameCount++;
+
+        scrambler->reset();
+        char* data_descrambled = (char*) malloc(sizeof(char) * 24);
+        scrambler->scramble((char*) data_frame, data_descrambled, 24);
+
+        char* data_bytes = (char*) malloc(sizeof(char) * 3);
+        memset(data_bytes, 0, sizeof(char) * 3);
+        for (int i = 0; i < 24; i++) {
+            data_bytes[i / 8] |= data_descrambled[i] << ( i % 8 );
+        }
+        free(data_descrambled);
+        //DumpHex(data_bytes, 3);
+        free(data_bytes);
     }
+
+    free(data_frame);
 
     return this;
 }
 
 bool VoicePhase::isSyncDue() {
-    return frameCount == 0;
+    return frameCount >= 20;
 }
