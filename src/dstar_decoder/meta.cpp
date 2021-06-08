@@ -97,7 +97,7 @@ void MetaWriter::sendMetaData() {
     }
 
     std::stringstream ss;
-    ss << "mode:dstar";
+    ss << "protocol:DSTAR";
     for (std::map<std::string, std::string>::iterator it = metadata.begin(); it != metadata.end(); it++) {
         ss << ";" << it->first << ":" << it->second;
     }
