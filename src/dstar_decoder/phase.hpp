@@ -68,7 +68,7 @@ namespace Digiham::DStar {
             void collectDataFrame(unsigned char* data);
             void parseFrameData();
             int frameCount;
-            int syncMissing = 0;
+            int syncCount;
             Scrambler* scrambler;
             unsigned char collected_data[6] = { 0 };
             unsigned char message[20] = { 0 };

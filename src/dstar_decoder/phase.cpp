@@ -28,7 +28,6 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
 
         if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
             std::cerr << "found a voice sync at pos " << read_pos << "\n";
-            meta->setSync("voice");
             data->advance(read_pos, SYNC_SIZE);
             return new VoicePhase(0);
         }
@@ -70,33 +69,39 @@ Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
     return new SyncPhase();
 }
 
-VoicePhase::VoicePhase(int frameCount): Phase(), frameCount(frameCount) {
+VoicePhase::VoicePhase(int frameCount): Phase(), frameCount(frameCount), syncCount(0) {
     scrambler = new Scrambler();
 }
 
 // default set up is with a sync due immediately, which is what we'd expect after a header
 // when starting after a voice sync, pass frameCount = 0 to the constructor above
-VoicePhase::VoicePhase(): VoicePhase(21) {}
+VoicePhase::VoicePhase(): VoicePhase(21) {
+    // header already counts as one sync, so we can get started right away
+    syncCount = 1;
+}
 
 VoicePhase::~VoicePhase() {
     delete scrambler;
 }
 
 Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
-    char* voice = (char*) malloc(sizeof(char) * 72);
-    data->read(voice, read_pos, 72);
-    data->advance(read_pos, 72);
+    // only output actual voice frames if we are confident about the sync
+    if (syncCount >= 1) {
+        char* voice = (char*) malloc(sizeof(char) * 72);
+        data->read(voice, read_pos, 72);
 
-    char* voice_packed = (char*) malloc(sizeof(char) * 9);
-    memset(voice_packed, 0, 9);
-    for (int i = 0; i < 72; i++) {
-        voice_packed[i / 8] |= (voice[i] & 1) << ( i % 8 );
+        char* voice_packed = (char*) malloc(sizeof(char) * 9);
+        memset(voice_packed, 0, 9);
+        for (int i = 0; i < 72; i++) {
+            voice_packed[i / 8] |= (voice[i] & 1) << ( i % 8 );
+        }
+        free(voice);
+
+        fwrite(voice_packed, sizeof(char), 9, stdout);
+        fflush(stdout);
+        free(voice_packed);
     }
-    free(voice);
-
-    fwrite(voice_packed, sizeof(char), 9, stdout);
-    free(voice_packed);
-
+    data->advance(read_pos, 72);
 
     // only 24 bits of data, but the terminator is 48 bits long, so we have to look ahead
     uint8_t* data_frame = (uint8_t*) malloc(sizeof(uint8_t) * 48);
@@ -105,16 +110,23 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
 
     if (hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) == 0) {
         // move another 24 since it's clear that this is all used up now
+        std::cerr << "terminator frame received, ending voice mode\n";
         data->advance(read_pos, 24);
         meta->reset();
         return new SyncPhase();
     }
     if (isSyncDue()) {
         if (hamming_distance(data_frame, (uint8_t*) voice_sync, SYNC_SIZE) > 1) {
-            if (syncMissing++ > 2) {
+            if (--syncCount < 0) {
                 std::cerr << "too many missed syncs, ending voice mode\n";
                 meta->reset();
                 return new SyncPhase();
+            }
+        } else {
+            // increase sync count, cap at 3
+            if (++syncCount > 3) syncCount = 3;
+            if (syncCount > 1) {
+                meta->setSync("voice");
             }
         }
         parseFrameData();
