@@ -10,6 +10,10 @@ extern "C" {
 
 using namespace Digiham::DStar;
 
+void Phase::setMetaWriter(MetaWriter* meta) {
+    this->meta = meta;
+}
+
 Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
     while (data->available(read_pos) > SYNC_SIZE) {
         //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
@@ -24,6 +28,7 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
 
         if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
             std::cerr << "found a voice sync at pos " << read_pos << "\n";
+            meta->setSync("voice");
             data->advance(read_pos, SYNC_SIZE);
             return new VoicePhase(0);
         }
@@ -55,7 +60,9 @@ Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
     data->advance(read_pos, Header::bits);
 
     if (header->isVoice()) {
-        delete(header);
+        // only set the header when we're actually entering voice phase
+        // since data phase is not implemented and we don't detect it's end
+        meta->setHeader(header);
         return new VoicePhase();
     }
 
@@ -97,15 +104,16 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
     data->advance(read_pos, 24);
 
     if (hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) == 0) {
-        std::cerr << "terminator received\n";
         // move another 24 since it's clear that this is all used up now
         data->advance(read_pos, 24);
+        meta->reset();
         return new SyncPhase();
     }
     if (isSyncDue()) {
         if (hamming_distance(data_frame, (uint8_t*) voice_sync, SYNC_SIZE) > 1) {
             if (syncMissing++ > 2) {
                 std::cerr << "too many missed syncs, ending voice mode\n";
+                meta->reset();
                 return new SyncPhase();
             }
         }
@@ -195,12 +203,16 @@ void VoicePhase::collectDataFrame(unsigned char* data) {
 
 void VoicePhase::parseFrameData() {
     if (messageBlocks == 0x0F) {
-        std::cerr << "parsed message: \"" << message << "\"\n";
+        meta->setMessage(std::string((char*)message, 20));
     }
     if (headerCount == 41) {
-        Header* h = new Header(header);
+        unsigned char* headerData = (unsigned char*) malloc(41);
+        memcpy(headerData, header, 41);
+        Header* h = new Header(headerData);
         if (h->isCrcValid()) {
-            std::cerr << "inline header: " << h->toString() << "\n";
+            meta->setHeader(h);
+        } else {
+            delete(h);
         }
     }
     size_t pos = simpleData.find("\r");
@@ -214,7 +226,7 @@ void VoicePhase::parseFrameData() {
 
             bool valid = Crc::isCrcValid((unsigned char*) something.substr(10).c_str(), something.length() - 10, checksum);
             if (valid) {
-                std::cerr << "parsed DPRS: " << something.substr(10, something.length() - 11) << "\n";
+                meta->setDPRS(something.substr(10, something.length() - 11));
             }
         } else {
             std::cerr << "parsed simple data: " << something << "\n";

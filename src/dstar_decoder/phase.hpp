@@ -3,6 +3,7 @@
 #include "ringbuffer.hpp"
 #include "header.hpp"
 #include "scrambler.hpp"
+#include "meta.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -16,7 +17,9 @@ namespace Digiham::DStar {
         public:
             virtual int getRequiredData() = 0;
             virtual Phase* process(Ringbuffer* data, size_t& read_pos) = 0;
+            void setMetaWriter(MetaWriter* meta);
         protected:
+            MetaWriter* meta;
             const uint8_t header_sync[SYNC_SIZE] = {
                 // part of the bitsync
                 // the repeated 10s should always come ahead of the actual sync sequence, so we can use that to get
