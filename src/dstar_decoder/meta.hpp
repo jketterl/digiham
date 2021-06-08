@@ -26,7 +26,7 @@ namespace Digiham::DStar {
             std::string sync = "";
             std::string message = "";
             std::string dprs = "";
-            FILE* file;
+            FILE* file = nullptr;
             bool held = false;
     };
 

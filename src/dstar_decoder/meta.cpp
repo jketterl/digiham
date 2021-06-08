@@ -10,7 +10,9 @@ MetaWriter::MetaWriter(FILE* out): file(out) {}
 MetaWriter::MetaWriter(): MetaWriter(nullptr) {}
 
 MetaWriter::~MetaWriter() {
-    fclose(file);
+    if (file != nullptr) {
+        fclose(file);
+    }
 }
 
 void MetaWriter::setFile(FILE* out) {
