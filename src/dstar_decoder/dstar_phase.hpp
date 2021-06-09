@@ -1,9 +1,10 @@
 #pragma once
 
+#include "phase.hpp"
 #include "ringbuffer.hpp"
 #include "header.hpp"
 #include "scrambler.hpp"
-#include "meta.hpp"
+#include "dstar_meta.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -13,13 +14,8 @@
 
 namespace Digiham::DStar {
 
-    class Phase {
-        public:
-            virtual int getRequiredData() = 0;
-            virtual Phase* process(Ringbuffer* data, size_t& read_pos) = 0;
-            void setMetaWriter(MetaWriter* meta);
+    class Phase: public Digiham::Phase {
         protected:
-            MetaWriter* meta;
             const uint8_t header_sync[SYNC_SIZE] = {
                 // part of the bitsync
                 // the repeated 10s should always come ahead of the actual sync sequence, so we can use that to get
@@ -46,13 +42,13 @@ namespace Digiham::DStar {
     class SyncPhase: public Phase {
         public:
             int getRequiredData() override { return SYNC_SIZE; }
-            Phase* process(Ringbuffer* data, size_t& read_pos) override;
+            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
     };
 
     class HeaderPhase: public Phase {
         public:
             int getRequiredData() override { return Header::bits; }
-            Phase* process(Ringbuffer* data, size_t& read_pos) override;
+            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
     };
 
     class VoicePhase: public Phase {
@@ -61,7 +57,7 @@ namespace Digiham::DStar {
             VoicePhase(int frameCount);
             ~VoicePhase();
             int getRequiredData() override { return 72 + 24 + 24; }
-            Phase* process(Ringbuffer* data, size_t& read_pos) override;
+            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
         private:
             bool isSyncDue();
             void resetFrames();

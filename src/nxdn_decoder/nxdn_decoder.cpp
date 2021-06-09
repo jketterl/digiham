@@ -1,8 +1,8 @@
-#include "dstar_decoder.hpp"
-#include "dstar_phase.hpp"
-#include "dstar_meta.hpp"
+#include "nxdn_decoder.hpp"
+#include "nxdn_meta.hpp"
+#include "nxdn_phase.hpp"
 
-using namespace Digiham::DStar;
+using namespace Digiham::Nxdn;
 
 int main(int argc, char** argv) {
     Decoder decoder;

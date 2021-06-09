@@ -1,33 +1,26 @@
 #pragma once
 
 #include "header.hpp"
-#include <cstdio>
-#include <map>
+#include "meta.hpp"
 #include <string>
 
 namespace Digiham::DStar {
 
-    class MetaWriter {
+    class MetaWriter: public Digiham::MetaWriter {
         public:
-            MetaWriter(FILE* out);
-            MetaWriter();
-            ~MetaWriter();
-            void setFile(FILE* out);
             void setSync(std::string sync);
             void setHeader(Header* header);
             void setMessage(std::string message);
             void setDPRS(std::string dprs);
             void reset();
-            void hold();
-            void release();
+        protected:
+            std::string getProtocol() override;
+            void sendMetaData() override;
         private:
-            void sendMetaData();
             Header* header = nullptr;
             std::string sync = "";
             std::string message = "";
             std::string dprs = "";
-            FILE* file = nullptr;
-            bool held = false;
     };
 
 }

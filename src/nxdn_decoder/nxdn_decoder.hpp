@@ -1,10 +1,8 @@
 #pragma once
 
 #include "decoder.hpp"
-#include "phase.hpp"
-#include <string>
 
-namespace Digiham::DStar {
+namespace Digiham::Nxdn {
 
     class Decoder: public Digiham::Decoder {
         public:

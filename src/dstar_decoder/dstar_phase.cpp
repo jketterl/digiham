@@ -1,4 +1,4 @@
-#include "phase.hpp"
+#include "dstar_phase.hpp"
 #include "crc.hpp"
 #include <iostream>
 #include <cstring>
@@ -10,11 +10,7 @@ extern "C" {
 
 using namespace Digiham::DStar;
 
-void Phase::setMetaWriter(MetaWriter* meta) {
-    this->meta = meta;
-}
-
-Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
+Digiham::Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
     while (data->available(read_pos) > SYNC_SIZE) {
         //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
 
@@ -37,7 +33,7 @@ Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
     return nullptr;
 }
 
-Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
+Digiham::Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
     unsigned char* raw = (unsigned char*) malloc(sizeof(unsigned char) * Header::bits);
     data->read((char*) raw, read_pos, Header::bits);
 
@@ -61,7 +57,7 @@ Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
     if (header->isVoice()) {
         // only set the header when we're actually entering voice phase
         // since data phase is not implemented and we don't detect it's end
-        meta->setHeader(header);
+        ((MetaWriter*) meta)->setHeader(header);
         return new VoicePhase();
     }
 
@@ -84,7 +80,7 @@ VoicePhase::~VoicePhase() {
     delete scrambler;
 }
 
-Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
+Digiham::Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
     // only output actual voice frames if we are confident about the sync
     if (syncCount >= 1) {
         char* voice = (char*) malloc(sizeof(char) * 72);
@@ -112,21 +108,21 @@ Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
         // move another 24 since it's clear that this is all used up now
         std::cerr << "terminator frame received, ending voice mode\n";
         data->advance(read_pos, 24);
-        meta->reset();
+        ((MetaWriter*) meta)->reset();
         return new SyncPhase();
     }
     if (isSyncDue()) {
         if (hamming_distance(data_frame, (uint8_t*) voice_sync, SYNC_SIZE) > 1) {
             if (--syncCount < 0) {
                 std::cerr << "too many missed syncs, ending voice mode\n";
-                meta->reset();
+                ((MetaWriter*) meta)->reset();
                 return new SyncPhase();
             }
         } else {
             // increase sync count, cap at 3
             if (++syncCount > 3) syncCount = 3;
             if (syncCount > 1) {
-                meta->setSync("voice");
+                ((MetaWriter*) meta)->setSync("voice");
             }
         }
         parseFrameData();
@@ -215,14 +211,14 @@ void VoicePhase::collectDataFrame(unsigned char* data) {
 
 void VoicePhase::parseFrameData() {
     if (messageBlocks == 0x0F) {
-        meta->setMessage(std::string((char*)message, 20));
+        ((MetaWriter*) meta)->setMessage(std::string((char*)message, 20));
     }
     if (headerCount == 41) {
         unsigned char* headerData = (unsigned char*) malloc(41);
         memcpy(headerData, header, 41);
         Header* h = new Header(headerData);
         if (h->isCrcValid()) {
-            meta->setHeader(h);
+            ((MetaWriter*) meta)->setHeader(h);
         } else {
             delete(h);
         }
@@ -238,7 +234,7 @@ void VoicePhase::parseFrameData() {
 
             bool valid = Crc::isCrcValid((unsigned char*) something.substr(10).c_str(), something.length() - 10, checksum);
             if (valid) {
-                meta->setDPRS(something.substr(10, something.length() - 11));
+                ((MetaWriter*) meta)->setDPRS(something.substr(10, something.length() - 11));
             }
         } else {
             std::cerr << "parsed simple data: " << something << "\n";

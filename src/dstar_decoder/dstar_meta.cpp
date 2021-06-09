@@ -1,23 +1,7 @@
-#include "meta.hpp"
+#include "dstar_meta.hpp"
 #include <sstream>
 
-#include <iostream>
-
 using namespace Digiham::DStar;
-
-MetaWriter::MetaWriter(FILE* out): file(out) {}
-
-MetaWriter::MetaWriter(): MetaWriter(nullptr) {}
-
-MetaWriter::~MetaWriter() {
-    if (file != nullptr) {
-        fclose(file);
-    }
-}
-
-void MetaWriter::setFile(FILE* out) {
-    file = out;
-}
 
 void MetaWriter::setSync(std::string sync) {
     if (sync == this->sync) return;
@@ -63,20 +47,11 @@ void MetaWriter::reset() {
     release();
 }
 
-void MetaWriter::hold() {
-    held = true;
-}
-
-void MetaWriter::release() {
-    held = false;
-    sendMetaData();
+std::string MetaWriter::getProtocol() {
+    return "DSTAR";
 }
 
 void MetaWriter::sendMetaData() {
-    if (/*file == nullptr || */held) {
-        return;
-    }
-
     std::map<std::string, std::string> metadata;
 
     if (sync != "") {
@@ -98,16 +73,5 @@ void MetaWriter::sendMetaData() {
         metadata["dprs"] = dprs;
     }
 
-    std::stringstream ss;
-    ss << "protocol:DSTAR";
-    for (std::map<std::string, std::string>::iterator it = metadata.begin(); it != metadata.end(); it++) {
-        ss << ";" << it->first << ":" << it->second;
-    }
-    ss << "\n";
-
-    std::string metaString = ss.str();
-    std::cerr << "metadata: " << metaString;
-    if (file == nullptr) return;
-    fwrite(metaString.c_str(), 1, metaString.length(), file);
-    fflush(file);
+    sendMetaMap(metadata);
 }
