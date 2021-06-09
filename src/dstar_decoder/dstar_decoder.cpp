@@ -58,7 +58,7 @@ bool Decoder::parseOptions(int argc, char** argv) {
         {"fifo", required_argument, NULL, 'f'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yvhs:d", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "vhf:", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'v':
                 printVersion();
