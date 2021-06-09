@@ -11,26 +11,26 @@ extern "C" {
 using namespace Digiham::DStar;
 
 Digiham::Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
-    while (data->available(read_pos) > SYNC_SIZE) {
-        //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
+    //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
 
-        uint8_t potential_sync[SYNC_SIZE];
-        data->read((char*) potential_sync, read_pos, SYNC_SIZE);
+    uint8_t potential_sync[SYNC_SIZE];
+    data->read((char*) potential_sync, read_pos, SYNC_SIZE);
 
-        if (hamming_distance(potential_sync, (uint8_t*) header_sync, SYNC_SIZE) <= 2) {
-            data->advance(read_pos, SYNC_SIZE);
-            return new HeaderPhase();
-        }
-
-        if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
-            std::cerr << "found a voice sync at pos " << read_pos << "\n";
-            data->advance(read_pos, SYNC_SIZE);
-            return new VoicePhase(0);
-        }
-
-        data->advance(read_pos, 1);
+    if (hamming_distance(potential_sync, (uint8_t*) header_sync, SYNC_SIZE) <= 2) {
+        data->advance(read_pos, SYNC_SIZE);
+        return new HeaderPhase();
     }
-    return nullptr;
+
+    if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
+        std::cerr << "found a voice sync at pos " << read_pos << "\n";
+        data->advance(read_pos, SYNC_SIZE);
+        return new VoicePhase(0);
+    }
+
+    // as long as we don't find any sync, move ahead, bit by bit
+    data->advance(read_pos, 1);
+    // tell decoder that we'll continue
+    return this;
 }
 
 Digiham::Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
