@@ -7,12 +7,23 @@
 
 namespace Digiham::Nxdn {
 
-    class SyncPhase: public Digiham::Phase {
+    class Phase: public Digiham::Phase {
+        protected:
+            static const uint8_t frameSync[SYNC_SIZE];
+    };
+
+    class SyncPhase: public Phase {
         public:
             int getRequiredData() override { return 10; }
             Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
+    };
+
+    class FramedPhase: public Phase {
+        public:
+            int getRequiredData() override { return 8; }
+            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
         private:
-            static const uint8_t frameSync[SYNC_SIZE];
+            int syncCount = 0;
     };
 
 }
