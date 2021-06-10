@@ -166,7 +166,13 @@ std::string Header::getCompanion() {
 }
 
 std::string Header::getOwnCallsign() {
-    return rtrim(std::string((char*) data + 27, 8)) + "/" + rtrim(std::string((char*) data + 35, 4));
+    std::stringstream ss;
+    ss << rtrim(std::string((char*) data + 27, 8));
+    std::string suffix = rtrim(std::string((char*) data + 35, 4));
+    if (suffix != "") {
+        ss << "/" << suffix;
+    }
+    return ss.str();
 }
 
 std::string Header::toString() {
