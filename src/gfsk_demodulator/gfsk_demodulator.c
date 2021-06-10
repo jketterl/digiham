@@ -5,6 +5,7 @@
 #include <math.h>
 #include <float.h>
 #include <getopt.h>
+#include <stdlib.h>
 #include "version.h"
 
 #define RINGBUFFER_SIZE 1024
@@ -17,15 +18,12 @@ int ringbuffer_write_pos = 0;
 uint8_t output[OUTPUT_SIZE];
 int output_pos = 0;
 
-#define SAMPLES_PER_SYMBOL 10
 #define VOLUME_RB_SIZE 100
 
 float volume_rb[VOLUME_RB_SIZE];
 int volume_rb_pos = 0;
 
 #define VARIANCE_SYMBOLS 100
-#define VARIANCE_RB_SIZE VARIANCE_SYMBOLS * SAMPLES_PER_SYMBOL
-float variance_rb[VARIANCE_RB_SIZE];
 int variance_rb_pos = 0;
 
 float min = 0, max = 0, centre = 0, umid = 0, lmid = 0;
@@ -59,19 +57,22 @@ void print_usage() {
         "Usage: gfsk_demodulator [options]\n\n"
         "Available options:\n"
         " -h, --help      show this message\n"
-        " -v, --version   print version and exit\n",
+        " -v, --version   print version and exit\n"
+        " -s, --samples   samples per symbol ( = audio sample rate / symbol rate; default: 10)\n",
         VERSION
     );
 }
 
 int main(int argc, char** argv) {
     int c;
+    unsigned int samples_per_symbol = 10;
     static struct option long_options[] = {
         {"help", no_argument, NULL, 'h'},
         {"version", no_argument, NULL, 'v'},
+        {"samples", required_argument, NULL, 's'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "hv", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "hvs:", long_options, NULL)) != -1) {
         switch (c) {
             case 'v':
                 print_version();
@@ -79,8 +80,14 @@ int main(int argc, char** argv) {
             case 'h':
                 print_usage();
                 return 0;
+            case 's':
+                samples_per_symbol = strtoul(optarg, NULL, 10);
+                break;
         }
     }
+
+    unsigned int variance_rb_size = VARIANCE_SYMBOLS * samples_per_symbol;
+    float variance_rb[variance_rb_size];
 
     int r = 0;
     while ((r = fread(buf, 4, READ_SIZE, stdin)) > 0) {
@@ -93,34 +100,34 @@ int main(int argc, char** argv) {
         }
 
         output_pos = 0;
-        while (ringbuffer_bytes() > SAMPLES_PER_SYMBOL + 1) {
+        while (ringbuffer_bytes() > samples_per_symbol + 1) {
             float sum = 0;
-            for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
+            for (i = 0; i < samples_per_symbol; i++) {
                 float value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
                 if (i > 0 && i < 9) sum += value;
                 variance_rb[variance_rb_pos + i] = value;
             }
-            ringbuffer_read_pos = mod(ringbuffer_read_pos + SAMPLES_PER_SYMBOL, RINGBUFFER_SIZE);
+            ringbuffer_read_pos = mod(ringbuffer_read_pos + samples_per_symbol, RINGBUFFER_SIZE);
 
-            variance_rb_pos += SAMPLES_PER_SYMBOL;
-            if (variance_rb_pos >= VARIANCE_RB_SIZE) {
+            variance_rb_pos += samples_per_symbol;
+            if (variance_rb_pos >= variance_rb_size) {
 
                 double vmin;
                 int vmin_pos;
 
-                for (i = 0; i < SAMPLES_PER_SYMBOL; i++) {
+                for (i = 0; i < samples_per_symbol; i++) {
                     //fprintf(stderr, "variance calc @ %i: ", i);
                     int total = 0;
                     int k;
                     for (k = 0; k < VARIANCE_SYMBOLS; k++) {
-                        total += variance_rb[k * SAMPLES_PER_SYMBOL + i];
+                        total += variance_rb[k * samples_per_symbol + i];
                     }
                     double mean = (float) total / VARIANCE_SYMBOLS;
                     //fprintf(stderr, "total: %i, mean: %.0f ", total, mean);
 
                     double dsum = 0;
                     for (k = 0; k < VARIANCE_SYMBOLS; k++) {
-                        dsum += pow(mean - variance_rb[k * SAMPLES_PER_SYMBOL + i], 2);
+                        dsum += pow(mean - variance_rb[k * samples_per_symbol + i], 2);
                     }
                     double variance = dsum / VARIANCE_SYMBOLS;
                     //fprintf(stderr, "variance: %.0f\n", variance);
@@ -146,10 +153,10 @@ int main(int argc, char** argv) {
                     //fprintf(stderr, "variance OK\n");
                 }
 
-                variance_rb_pos %= VARIANCE_RB_SIZE;
+                variance_rb_pos %= variance_rb_size;
             }
 
-            float average = sum / (SAMPLES_PER_SYMBOL - 2);
+            float average = sum / (samples_per_symbol - 2);
             volume_rb[volume_rb_pos] = average;
 
             volume_rb_pos += 1;
