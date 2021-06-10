@@ -4,6 +4,8 @@
 #include "ringbuffer.hpp"
 
 #define SYNC_SIZE 10
+// 384 bits or 192 symbols
+#define FRAME_SIZE 192
 
 namespace Digiham::Nxdn {
 
@@ -20,7 +22,7 @@ namespace Digiham::Nxdn {
 
     class FramedPhase: public Phase {
         public:
-            int getRequiredData() override { return 8; }
+            int getRequiredData() override { return FRAME_SIZE; }
             Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
         private:
             int syncCount = 0;

@@ -1,7 +1,5 @@
 #include "lich.hpp"
 
-#include <iostream>
-
 using namespace Digiham::Nxdn;
 
 Lich* Lich::parse(unsigned char* raw) {
@@ -26,13 +24,28 @@ Lich* Lich::parse(unsigned char* raw) {
 
     unsigned char lich_byte = 0;
     for (int i = 0; i < 7; i++) {
-        lich_byte |= lich_bits[i] << (7 - i);
+        lich_byte |= lich_bits[i] << (6 - i);
     }
 
     return new Lich(lich_byte);
 }
 
 Lich::Lich(unsigned char data) {
-    std::cerr << "new lich: " << std::hex << +data << "\n";
     this->data = data;
+}
+
+unsigned char Lich::getRFType() {
+    return (data >> 5) & 0b11;
+}
+
+unsigned char Lich::getFunctionalType() {
+    return (data >> 3) & 0b11;
+}
+
+unsigned char Lich::getOption() {
+    return (data >> 1) & 0b11;
+}
+
+unsigned char Lich::getDirection() {
+    return data & 1;
 }
