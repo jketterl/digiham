@@ -60,18 +60,25 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
             // TODO: parse SACCH
             data->advance(read_pos, 30);
 
+            unsigned char option = lich->getOption();
+
             // 4 voice frames
             for (int i = 0; i < 4; i++) {
-                unsigned char voice[36];
-                data->read((char*) voice, read_pos, 36);
+                // evaluate steal flag
+                if ((option >> (1 - (i / 2))) & 1) {
+                    unsigned char voice[36];
+                    data->read((char*) voice, read_pos, 36);
 
-                unsigned char voice_frame[9] = { 0 };
-                for (int k = 0; k < 36; k++) {
-                    voice_frame[k / 4] |= (voice[k] & 3) << (7 - ((k % 4) * 2));
+                    unsigned char voice_frame[9] = { 0 };
+                    for (int k = 0; k < 36; k++) {
+                        voice_frame[k / 4] |= (voice[k] & 3) << (7 - ((k % 4) * 2));
+                    }
+
+                    fwrite(voice_frame, sizeof(char), 9, stdout);
+                    fflush(stdout);
+                } else {
+                    // TODO: parse FAACH1
                 }
-
-                fwrite(voice_frame, sizeof(char), 9, stdout);
-                fflush(stdout);
 
                 data->advance(read_pos, 36);
             }
