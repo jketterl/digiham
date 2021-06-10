@@ -2,6 +2,8 @@
 
 #include "phase.hpp"
 #include "ringbuffer.hpp"
+#include "scrambler.hpp"
+#include "lich.hpp"
 
 #define SYNC_SIZE 10
 // 384 bits or 192 symbols
@@ -22,10 +24,14 @@ namespace Digiham::Nxdn {
 
     class FramedPhase: public Phase {
         public:
+            FramedPhase();
+            ~FramedPhase();
             int getRequiredData() override { return FRAME_SIZE; }
             Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
         private:
             int syncCount = 0;
+            Scrambler* scrambler;
+            Lich* lich = nullptr;
     };
 
 }
