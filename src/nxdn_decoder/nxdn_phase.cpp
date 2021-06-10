@@ -1,5 +1,6 @@
 #include "nxdn_phase.hpp"
 #include "lich.hpp"
+#include "sacch.hpp"
 
 #include <iostream>
 
@@ -57,7 +58,12 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
             lich->getFunctionalType() != NXDN_USC_TYPE_UDCH
         ) {
             // looks like we're in voice mode
-            // TODO: parse SACCH
+            unsigned char sacch_raw[30];
+            data->read((char*) sacch_raw, read_pos,  30);
+            Sacch* sacch = Sacch::parse(sacch_raw);
+            if (sacch != nullptr) {
+                delete sacch;
+            }
             data->advance(read_pos, 30);
 
             unsigned char option = lich->getOption();
