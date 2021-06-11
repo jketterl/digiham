@@ -31,7 +31,6 @@ typedef struct {
 
 uint8_t decode_trellis(uint8_t *input, uint8_t size, uint8_t *output) {
     uint8_t pos = 0;
-    uint8_t shift = 0;
 
     uint8_t i;
     branch *branches = (branch*) malloc(sizeof(branch) * 16);
