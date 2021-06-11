@@ -73,8 +73,6 @@ const uint8_t Header::trellis_transitions[4][2] = {
 };
 
 unsigned int Header::viterbi_decode(unsigned char* input, unsigned char* output) {
-    uint8_t shift = 0;
-
     uint8_t i;
     branch *branches = (branch*) malloc(sizeof(branch) * 4);
     for (i = 0; i < 4; i++) {
