@@ -1,5 +1,4 @@
 #include "nxdn_phase.hpp"
-#include "sacch.hpp"
 
 #include <iostream>
 
@@ -32,10 +31,12 @@ Digiham::Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
 
 FramedPhase::FramedPhase() {
     scrambler = new Scrambler();
+    sacchCollector = new SacchSuperframeCollector();
 }
 
 FramedPhase::~FramedPhase() {
     delete scrambler;
+    delete sacchCollector;
 }
 
 Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
@@ -109,10 +110,20 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
         if (lich->getFunctionalType() == NXDN_USC_TYPE_SACCH_SF) {
             Sacch* sacch = Sacch::parse(sacch_descrambled);
             if (sacch != nullptr) {
-                std::cerr << "sacch index: " << +sacch->getStructureIndex() << "\n";
-                delete sacch;
+                sacchCollector->push(sacch);
+                if (sacchCollector->isComplete()) {
+                    std::cerr << "full sacch recovered!\n";
+                    SacchSuperframe* ssf = sacchCollector->getSuperframe();
+                    if (ssf->getMessageType() == SACCH_MESSAGE_TYPE_VCALL) {
+                        std::cerr << "VCALL: call type: " << +ssf->getCallType() << "; source: " << ssf->getSourceUnitId() << "; destination: " << ssf->getDestinationId() << "\n";
+                    } else {
+                        std::cerr << "unhandled SACCH message type: " << +ssf->getMessageType() << "\n";
+                    }
+                    delete(ssf);
+                    sacchCollector->reset();
+                }
             } else {
-                std::cerr << "saach not available\n";
+                sacchCollector->reset();
             }
         }
         data->advance(read_pos, 30);

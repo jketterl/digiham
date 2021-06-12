@@ -4,6 +4,7 @@
 #include "ringbuffer.hpp"
 #include "scrambler.hpp"
 #include "lich.hpp"
+#include "sacch.hpp"
 
 #define SYNC_SIZE 10
 // 384 bits or 192 symbols
@@ -32,6 +33,7 @@ namespace Digiham::Nxdn {
             int syncCount = 0;
             Scrambler* scrambler;
             Lich* lich = nullptr;
+            SacchSuperframeCollector* sacchCollector;
     };
 
 }
