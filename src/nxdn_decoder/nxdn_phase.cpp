@@ -66,57 +66,84 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
         if (lich != nullptr) delete lich;
         lich = new_lich;
     }
-    if (lich != nullptr) {
-        if (
-            lich->getRFType() != NXDN_RF_CHANNEL_TYPE_RCCH &&
-            lich->getFunctionalType() != NXDN_USC_TYPE_UDCH
-        ) {
-            // looks like we're in voice mode
-            unsigned char sacch_raw[30];
-            data->read((char*) sacch_raw, read_pos,  30);
+    if (
+        lich != nullptr &&
+        lich->getRFType() != NXDN_RF_CHANNEL_TYPE_RCCH &&
+        lich->getFunctionalType() != NXDN_USC_TYPE_UDCH
+    ) {
+        // looks like we're in voice mode
+        /*
+        // some raw data for testing, taken from the "Common Air interface Test" document
+        // when decoded, these should for one superframe SACCH with some sample VOICECALL information.
+        unsigned char sacch_raw[30] = {
+            0b11, 0b00, 0b11, 0b11, 0b10, 0b10, 0b00, 0b00,
+            0b10, 0b10, 0b01, 0b10, 0b11, 0b10, 0b10, 0b00,
+            0b10, 0b10, 0b00, 0b10, 0b00, 0b11, 0b01, 0b01,
+            0b01, 0b10, 0b11, 0b10, 0b10, 0b00
+        };
+        unsigned char sacch_raw[30] = {
+            0b11, 0b00, 0b01, 0b10, 0b11, 0b01, 0b10, 0b11,
+            0b10, 0b11, 0b00, 0b00, 0b11, 0b10, 0b10, 0b11,
+            0b00, 0b11, 0b10, 0b10, 0b01, 0b00, 0b00, 0b10,
+            0b01, 0b10, 0b10, 0b10, 0b10, 0b00
+        };
+        unsigned char sacch_raw[30] = {
+            0b01, 0b10, 0b00, 0b11, 0b10, 0b10, 0b00, 0b01,
+            0b10, 0b11, 0b01, 0b00, 0b10, 0b10, 0b10, 0b00,
+            0b00, 0b01, 0b10, 0b10, 0b10, 0b00, 0b11, 0b10,
+            0b00, 0b10, 0b10, 0b00, 0b00, 0b00
+        };
+        unsigned char sacch_raw[30] = {
+            0b01, 0b00, 0b00, 0b10, 0b10, 0b00, 0b10, 0b00,
+            0b00, 0b11, 0b00, 0b00, 0b00, 0b10, 0b10, 0b11,
+            0b00, 0b00, 0b00, 0b10, 0b11, 0b01, 0b00, 0b00,
+            0b01, 0b11, 0b11, 0b10, 0b00, 0b10
+        };
+        */
+        unsigned char sacch_raw[30];
+        data->read((char*) sacch_raw, read_pos,  30);
 
-            unsigned char sacch_descrambled[30];
-            scrambler->scramble(sacch_raw, sacch_descrambled, 30);
+        unsigned char sacch_descrambled[30];
+        scrambler->scramble(sacch_raw, sacch_descrambled, 30);
 
+        if (lich->getFunctionalType() == NXDN_USC_TYPE_SACCH_SF) {
             Sacch* sacch = Sacch::parse(sacch_descrambled);
             if (sacch != nullptr) {
+                std::cerr << "sacch index: " << +sacch->getStructureIndex() << "\n";
                 delete sacch;
+            } else {
+                std::cerr << "saach not available\n";
             }
-            data->advance(read_pos, 30);
+        }
+        data->advance(read_pos, 30);
 
-            unsigned char option = lich->getOption();
+        unsigned char option = lich->getOption();
 
-            // 4 voice frames
-            for (int i = 0; i < 2; i++) {
-                // always read and scramble now until FACCH is implemented
-                unsigned char voice[72];
-                data->read((char*) voice, read_pos, 72);
+        // 4 voice frames
+        for (int i = 0; i < 2; i++) {
+            // always read and scramble now until FACCH is implemented
+            unsigned char voice[72];
+            data->read((char*) voice, read_pos, 72);
 
-                unsigned char voice_descrambled[72];
-                scrambler->scramble(voice, voice_descrambled, 72);
+            unsigned char voice_descrambled[72];
+            scrambler->scramble(voice, voice_descrambled, 72);
 
-                // evaluate steal flag
-                if ((option >> (1 - i)) & 1) {
-                    unsigned char voice_frame[18] = { 0 };
-                    for (int k = 0; k < 72; k++) {
-                        voice_frame[k / 4] |= (voice_descrambled[k] & 3) << (6 - ((k % 4) * 2));
-                    }
-
-                    fwrite(voice_frame, sizeof(char), 18, stdout);
-                    fflush(stdout);
-                } else {
-                    // std::cerr << "steal! ";
-                    // TODO: parse FAACH1
+            // evaluate steal flag
+            if ((option >> (1 - i)) & 1) {
+                unsigned char voice_frame[18] = { 0 };
+                for (int k = 0; k < 72; k++) {
+                    voice_frame[k / 4] |= (voice_descrambled[k] & 3) << (6 - ((k % 4) * 2));
                 }
-                data->advance(read_pos, 72);
-            }
 
-        } else {
-            // advance what's left
-            data->advance(read_pos, 174);
+                fwrite(voice_frame, sizeof(char), 18, stdout);
+                fflush(stdout);
+            } else {
+                // std::cerr << "steal! ";
+                // TODO: parse FAACH1
+            }
+            data->advance(read_pos, 72);
         }
     } else {
-        std::cerr << "could not parse lich\n";
         // advance what's left
         data->advance(read_pos, 174);
     }
