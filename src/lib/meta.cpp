@@ -1,8 +1,6 @@
 #include "meta.hpp"
 #include <sstream>
 
-#include <iostream>
-
 using namespace Digiham;
 
 MetaWriter::MetaWriter(FILE* out): file(out) {}
