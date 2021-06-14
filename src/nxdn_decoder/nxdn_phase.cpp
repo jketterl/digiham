@@ -116,15 +116,6 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
                 if (sacchCollector->isComplete()) {
                     std::cerr << "full sacch recovered!\n";
                     ((MetaWriter*) meta)->setSacch(sacchCollector->getSuperframe());
-                    /*
-                    SacchSuperframe* ssf = sacchCollector->getSuperframe();
-                    if (ssf->getMessageType() == SACCH_MESSAGE_TYPE_VCALL) {
-                        std::cerr << "VCALL: call type: " << +ssf->getCallType() << "; source: " << ssf->getSourceUnitId() << "; destination: " << ssf->getDestinationId() << "\n";
-                    } else {
-                        std::cerr << "unhandled SACCH message type: " << +ssf->getMessageType() << "\n";
-                    }
-                    delete(ssf);
-                    */
                     sacchCollector->reset();
                 }
             } else {
