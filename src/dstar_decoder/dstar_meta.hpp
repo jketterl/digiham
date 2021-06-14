@@ -12,6 +12,7 @@ namespace Digiham::DStar {
             void setHeader(Header* header);
             void setMessage(std::string message);
             void setDPRS(std::string dprs);
+            void setGPS(float lat, float lon);
             void reset();
         protected:
             std::string getProtocol() override;
@@ -21,6 +22,9 @@ namespace Digiham::DStar {
             std::string sync = "";
             std::string message = "";
             std::string dprs = "";
+            float lat;
+            float lon;
+            bool gpsSet = false;
     };
 
 }

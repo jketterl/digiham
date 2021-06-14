@@ -65,6 +65,7 @@ namespace Digiham::DStar {
             void parseFrameData();
             int frameCount;
             int syncCount;
+            void parseNMEAData(std::string data);
             Scrambler* scrambler;
             unsigned char collected_data[6] = { 0 };
             unsigned char message[20] = { 0 };

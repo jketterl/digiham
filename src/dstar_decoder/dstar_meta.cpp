@@ -38,12 +38,21 @@ void MetaWriter::setDPRS(std::string dprs) {
     sendMetaData();
 }
 
+void MetaWriter::setGPS(float lat, float lon) {
+    if (gpsSet && this->lat == lat && this->lon == lon) return;
+    this->lat = lat;
+    this->lon = lon;
+    gpsSet = true;
+}
+
 void MetaWriter::reset() {
     hold();
     setHeader(nullptr);
     setSync("");
     setMessage("");
     setDPRS("");
+    setGPS(0, 0);
+    gpsSet = false;
     release();
 }
 
@@ -71,6 +80,11 @@ void MetaWriter::sendMetaData() {
 
     if (dprs != "") {
         metadata["dprs"] = dprs;
+    }
+
+    if (gpsSet) {
+        metadata["lat"] = std::to_string(lat);
+        metadata["lon"] = std::to_string(lon);
     }
 
     sendMetaMap(metadata);

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include <sstream>
+#include <vector>
 
 extern "C" {
 #include "hamming_distance.h"
@@ -223,8 +224,8 @@ void VoicePhase::parseFrameData() {
             delete(h);
         }
     }
-    size_t pos = simpleData.find("\r");
-    if (pos != std::string::npos) {
+    size_t pos;
+    while ((pos = simpleData.find("\r")) != std::string::npos) {
         std::string something = simpleData.substr(0, pos + 1);
         if (something.length() >= 10 && something.substr(0, 5) == "$$CRC" && something.at(9) == ',') {
             std::stringstream ss;
@@ -236,9 +237,62 @@ void VoicePhase::parseFrameData() {
             if (valid) {
                 ((MetaWriter*) meta)->setDPRS(something.substr(10, something.length() - 11));
             }
+        } else if (something.length() > 5 && something.at(0) == '$') {
+            parseNMEAData(something);
         } else {
             std::cerr << "parsed simple data: " << something << "\n";
         }
-        simpleData = simpleData.substr(pos + 1);
+        // termination may be \r or \r\n - anticipate both
+        simpleData = simpleData.substr(pos + 1 + (simpleData.length() > pos + 1 && simpleData.at(pos + 1) == '\n'));
+    }
+}
+
+void VoicePhase::parseNMEAData(std::string input) {
+    size_t checksum_pos = input.find_last_of("*");
+    if (checksum_pos == std::string::npos) {
+        std::cerr << "no NMEA checksum available\n";
+        return;
+    }
+    if (checksum_pos + 2 > input.length()) {
+        std::cerr << "NMEA checksum incomplete\n";
+        return;
+    }
+
+    std::string body = input.substr(1, checksum_pos - 1);
+    // std::string talker = body.substr(0, 2);
+    std::string message = body.substr(2, 3);
+    uint8_t checksum = 0;
+    for (int i = 0; i < body.length(); i++) {
+        checksum ^= body.at(i);
+    }
+
+    std::stringstream ss;
+    uint16_t to_check;
+    ss << std::hex << input.substr(checksum_pos + 1, 2);
+    ss >> to_check;
+
+    if (checksum != to_check) {
+        std::cerr << "NMEA checksum failure\n";
+        return;
+    }
+
+    std::vector<std::string> fields;
+    std::stringstream splitter(body);
+    std::string item;
+    while (getline(splitter, item, ',')) {
+        fields.push_back(item);
+    }
+
+    if (message == "GGA") {
+        float lat_combined = std::stof(fields[2]);
+        float lat = (int) lat_combined / 100;
+        lat += (lat_combined - lat * 100) / 60;
+        if (fields[3] == "S") lat *= -1;
+        float lon_combined = std::stof(fields[4]);
+        float lon = (int) lon_combined / 100;
+        lon += (lon_combined - lon * 100) / 60;
+        if (fields[5] == "W") lon *= -1;
+
+        ((MetaWriter*) meta)->setGPS(lat, lon);
     }
 }
