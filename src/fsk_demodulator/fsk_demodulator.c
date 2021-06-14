@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
             float sum = 0;
             for (i = 0; i < samples_per_symbol; i++) {
                 float value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
-                if (i > 0 && i < 9) sum += value;
+                if (i > 0 && i < samples_per_symbol - 1) sum += value;
                 variance_rb[variance_rb_pos + i] = value;
             }
             ringbuffer_read_pos = mod(ringbuffer_read_pos + samples_per_symbol, RINGBUFFER_SIZE);
@@ -145,18 +145,18 @@ int main(int argc, char** argv) {
                     }
                 }
 
-                //fprintf(stderr, "minimum variance: %.1f @ %i ", vmin, vmin_pos);
+                //fprintf(stderr, "minimum variance: %.1f @ %i ", vmin, vmin_pos);
                 if (vmin <= 0 || vmin > 5000000) {
                     //fprintf(stderr, "no variance decision\n");
-                } else if (vmin_pos > 0 && vmin_pos <= 4) {
+                } else if (vmin_pos > 0 && vmin_pos < samples_per_symbol / 2) {
                     // variance indicates stepping to the left
                     //fprintf(stderr, "skipping\n");
                     ringbuffer_read_pos = mod(ringbuffer_read_pos + 1, RINGBUFFER_SIZE);
-                } else if (vmin_pos >= 5 && vmin_pos < 9) {
+                } else if (vmin_pos >= samples_per_symbol / 2 && vmin_pos < samples_per_symbol - 1) {
                     // variance indicates stepping to the right
                     //fprintf(stderr, "duplicating\n");
                     ringbuffer_read_pos = mod(ringbuffer_read_pos - 1, RINGBUFFER_SIZE);
-                } else {
+                //} else {
                     //fprintf(stderr, "variance OK\n");
                 }
 
