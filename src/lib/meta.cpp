@@ -37,8 +37,9 @@ void MetaWriter::sendMetaMap(std::map<std::string, std::string> metadata) {
     ss << "\n";
 
     std::string metaString = ss.str();
+    if (held) return;
     std::cerr << "metadata: " << metaString;
-    if (file == nullptr || held) {
+    if (file == nullptr) {
         return;
     }
     fwrite(metaString.c_str(), 1, metaString.length(), file);

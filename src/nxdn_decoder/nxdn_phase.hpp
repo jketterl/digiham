@@ -5,6 +5,7 @@
 #include "scrambler.hpp"
 #include "lich.hpp"
 #include "sacch.hpp"
+#include "nxdn_meta.hpp"
 
 #define SYNC_SIZE 10
 // 384 bits or 192 symbols

@@ -48,6 +48,7 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
     } else {
         if (--syncCount < 0) {
             std::cerr << "lost sync at " << read_pos << "\n";
+            ((MetaWriter*) meta)->reset();
             return new SyncPhase();
         }
     }
@@ -73,6 +74,7 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
         lich->getFunctionalType() != NXDN_USC_TYPE_UDCH
     ) {
         // looks like we're in voice mode
+        ((MetaWriter*) meta)->setSync("voice");
         /*
         // some raw data for testing, taken from the "Common Air interface Test" document
         // when decoded, these should for one superframe SACCH with some sample VOICECALL information.
@@ -113,6 +115,8 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
                 sacchCollector->push(sacch);
                 if (sacchCollector->isComplete()) {
                     std::cerr << "full sacch recovered!\n";
+                    ((MetaWriter*) meta)->setSacch(sacchCollector->getSuperframe());
+                    /*
                     SacchSuperframe* ssf = sacchCollector->getSuperframe();
                     if (ssf->getMessageType() == SACCH_MESSAGE_TYPE_VCALL) {
                         std::cerr << "VCALL: call type: " << +ssf->getCallType() << "; source: " << ssf->getSourceUnitId() << "; destination: " << ssf->getDestinationId() << "\n";
@@ -120,6 +124,7 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
                         std::cerr << "unhandled SACCH message type: " << +ssf->getMessageType() << "\n";
                     }
                     delete(ssf);
+                    */
                     sacchCollector->reset();
                 }
             } else {
