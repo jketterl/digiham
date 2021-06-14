@@ -1,4 +1,6 @@
 #include "nxdn_phase.hpp"
+#include "facch1.hpp"
+#include "types.hpp"
 
 #include <iostream>
 
@@ -73,8 +75,6 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
         lich->getRFType() != NXDN_RF_CHANNEL_TYPE_RCCH &&
         lich->getFunctionalType() != NXDN_USC_TYPE_UDCH
     ) {
-        // looks like we're in voice mode
-        ((MetaWriter*) meta)->setSync("voice");
         /*
         // some raw data for testing, taken from the "Common Air interface Test" document
         // when decoded, these should for one superframe SACCH with some sample VOICECALL information.
@@ -114,7 +114,6 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
             if (sacch != nullptr) {
                 sacchCollector->push(sacch);
                 if (sacchCollector->isComplete()) {
-                    std::cerr << "full sacch recovered!\n";
                     ((MetaWriter*) meta)->setSacch(sacchCollector->getSuperframe());
                     sacchCollector->reset();
                 }
@@ -126,9 +125,8 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
 
         unsigned char option = lich->getOption();
 
-        // 4 voice frames
+        // 2 * 2 voice frames, or maybe voice slots "stolen" by a FACCH1
         for (int i = 0; i < 2; i++) {
-            // always read and scramble now until FACCH is implemented
             unsigned char voice[72];
             data->read((char*) voice, read_pos, 72);
 
@@ -137,6 +135,9 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
 
             // evaluate steal flag
             if ((option >> (1 - i)) & 1) {
+                // voice is only certain when we actually enter a voice frame
+                ((MetaWriter*) meta)->setSync("voice");
+
                 unsigned char voice_frame[18] = { 0 };
                 for (int k = 0; k < 72; k++) {
                     voice_frame[k / 4] |= (voice_descrambled[k] & 3) << (6 - ((k % 4) * 2));
@@ -145,8 +146,21 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
                 fwrite(voice_frame, sizeof(char), 18, stdout);
                 fflush(stdout);
             } else {
-                // std::cerr << "steal! ";
-                // TODO: parse FAACH1
+                Facch1* facch1 = Facch1::parse(voice_descrambled);
+                if (facch1 != nullptr) {
+                    switch (facch1->getMessageType()) {
+                        case NXDN_MESSAGE_TYPE_TX_RELEASE:
+                            std::cerr << "FAACH1 signals TX release\n";
+                            ((MetaWriter*) meta)->reset();
+                            delete facch1;
+                            return new SyncPhase();
+                        case NXDN_MESSAGE_TYPE_IDLE:
+                            break;
+                        default:
+                            std::cerr << "FACCH1 message type: " << +facch1->getMessageType() << "\n";
+                    }
+                    delete facch1;
+                }
             }
             data->advance(read_pos, 72);
         }

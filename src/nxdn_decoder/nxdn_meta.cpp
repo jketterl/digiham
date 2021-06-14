@@ -1,4 +1,5 @@
 #include "nxdn_meta.hpp"
+#include "types.hpp"
 
 using namespace Digiham::Nxdn;
 
@@ -10,10 +11,10 @@ void MetaWriter::sendMetaData() {
     }
 
     if (sacch != nullptr) {
-        if (sacch->getMessageType() == SACCH_MESSAGE_TYPE_VCALL) {
-            if (sacch->getCallType() == SACCH_CALL_TYPE_CONFERENCE) {
+        if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
+            if (sacch->getCallType() == NXDN_CALL_TYPE_CONFERENCE) {
                 metadata["mode"] = "conference";
-            } else if (sacch->getCallType() == SACCH_CALL_TYPE_INDIVIDUAL) {
+            } else if (sacch->getCallType() == NXDN_CALL_TYPE_INDIVIDUAL) {
                 metadata["mode"] = "individual";
             }
             metadata["source"] = std::to_string(sacch->getSourceUnitId());

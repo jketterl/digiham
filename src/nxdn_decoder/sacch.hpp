@@ -2,13 +2,6 @@
 
 #include <cstdint>
 
-#define SACCH_MESSAGE_TYPE_VCALL 0x01
-
-// spec has more types, but i think that's all we're interested in right now
-#define SACCH_CALL_TYPE_BROADCAST 0b000
-#define SACCH_CALL_TYPE_CONFERENCE 0b001
-#define SACCH_CALL_TYPE_INDIVIDUAL 0b100
-
 namespace Digiham::Nxdn {
 
     class Sacch {
@@ -25,7 +18,6 @@ namespace Digiham::Nxdn {
             static void inflate(unsigned char* input, unsigned char* output);
             static unsigned int viterbi_decode(unsigned char* in, unsigned char* out);
             static bool check_crc(unsigned char* in);
-            static const unsigned char trellis_transitions[16][2];
 
             unsigned char* data;
     };
