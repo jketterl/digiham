@@ -12,9 +12,9 @@ void MetaWriter::sendMetaData() {
     if (sacch != nullptr) {
         if (sacch->getMessageType() == SACCH_MESSAGE_TYPE_VCALL) {
             if (sacch->getCallType() == SACCH_CALL_TYPE_CONFERENCE) {
-                metadata["type"] = "conference";
+                metadata["mode"] = "conference";
             } else if (sacch->getCallType() == SACCH_CALL_TYPE_INDIVIDUAL) {
-                metadata["type"] = "individual";
+                metadata["mode"] = "individual";
             }
             metadata["source"] = std::to_string(sacch->getSourceUnitId());
             metadata["destination"] = std::to_string(sacch->getDestinationId());
