@@ -13,9 +13,9 @@ void MetaWriter::sendMetaData() {
     if (sacch != nullptr) {
         if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
             if (sacch->getCallType() == NXDN_CALL_TYPE_CONFERENCE) {
-                metadata["mode"] = "conference";
+                metadata["type"] = "conference";
             } else if (sacch->getCallType() == NXDN_CALL_TYPE_INDIVIDUAL) {
-                metadata["mode"] = "individual";
+                metadata["type"] = "individual";
             }
             metadata["source"] = std::to_string(sacch->getSourceUnitId());
             metadata["destination"] = std::to_string(sacch->getDestinationId());
