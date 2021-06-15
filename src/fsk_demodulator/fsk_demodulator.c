@@ -96,6 +96,9 @@ int main(int argc, char** argv) {
     unsigned int variance_rb_size = VARIANCE_SYMBOLS * samples_per_symbol;
     float variance_rb[variance_rb_size];
 
+    int lowest_eval = (int) round((float)samples_per_symbol / 3);
+    int highest_eval = (int) round((float)samples_per_symbol * 2 / 3);
+
     int r = 0;
     while ((r = fread(buf, 4, READ_SIZE, stdin)) > 0) {
 
@@ -109,9 +112,11 @@ int main(int argc, char** argv) {
         output_pos = 0;
         while (ringbuffer_bytes() > samples_per_symbol + 1) {
             float sum = 0;
+            float volume_sum = 0;
             for (i = 0; i < samples_per_symbol; i++) {
                 float value = ringbuffer[mod(ringbuffer_read_pos + i, RINGBUFFER_SIZE)];
-                if (i > 0 && i < samples_per_symbol - 1) sum += value;
+                if (i >= lowest_eval && i < highest_eval) sum += value;
+                volume_sum += value;
                 variance_rb[variance_rb_pos + i] = value;
             }
             ringbuffer_read_pos = mod(ringbuffer_read_pos + samples_per_symbol, RINGBUFFER_SIZE);
@@ -163,13 +168,15 @@ int main(int argc, char** argv) {
                 variance_rb_pos %= variance_rb_size;
             }
 
-            float average = sum / (samples_per_symbol - 2);
-            volume_rb[volume_rb_pos] = average;
+            float volume_average = volume_sum / samples_per_symbol;
+            volume_rb[volume_rb_pos] = volume_average;
 
             volume_rb_pos += 1;
             if (volume_rb_pos >= VOLUME_RB_SIZE) volume_rb_pos = 0;
 
             calibrate_audio();
+
+            float average = sum / (highest_eval - lowest_eval);
 
             if (average > centre) {
                 output[output_pos] = 1 ^ invert;
