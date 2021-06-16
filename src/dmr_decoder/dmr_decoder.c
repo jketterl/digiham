@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "bitmappings.h"
 #include "version.h"
 #include "quadratic_residue.h"
@@ -78,8 +79,8 @@ meta_struct metadata[2];
 void meta_write(uint8_t slot) {
     if (meta_fifo == NULL) return;
     meta_struct* meta = &metadata[slot];
-    char meta_string[255];
-    char builder[255];
+    char meta_string[1023];
+    char builder[1023];
 
     sprintf(meta_string, "protocol:DMR;slot:%i;", slot);
     switch (meta->sync) {
@@ -109,6 +110,13 @@ void meta_write(uint8_t slot) {
     strcat(meta_string, "\n");
     fwrite(meta_string, 1, strlen(meta_string), meta_fifo);
     fflush(meta_fifo);
+
+    int error = ferror(meta_fifo);
+    if (error) {
+        fprintf(stderr, "error on meta fifo: %s\n", strerror(errno));
+        fclose(meta_fifo);
+        meta_fifo = NULL;
+    }
 }
 
 void meta_reset(uint8_t slot) {
@@ -160,6 +168,11 @@ void reset_cach_payload() {
 }
 
 void copy_lcss_bits(uint8_t payload[3], uint8_t offset) {
+    if (offset > 4) {
+        // we're not even going to complain about this since decoding is not implemented
+        // fprintf(stderr, "LCSS overflow; dropping data\n");
+        return;
+    }
     int i;
     for (i = 0; i < 17; i++) {
         int input_pos = i / 8;
@@ -361,6 +374,10 @@ int main(int argc, char** argv) {
             case 'c':
                 fprintf(stderr, "control fifo: %s\n", optarg);
                 control_fifo = fopen(optarg, "r");
+                if (control_fifo == NULL) {
+                    fprintf(stderr, "could not open control fifo: %s\n", strerror(errno));
+                    break;
+                }
                 int flags = fcntl(fileno(control_fifo), F_GETFL, 0);
                 fcntl(fileno(control_fifo), F_SETFL, flags | O_NONBLOCK);
                 break;
@@ -381,9 +398,8 @@ int main(int argc, char** argv) {
     uint8_t slot_filter = 3;
     int active_slot = -1;
 
-    char * control_line;
     size_t control_bufsize = 32;
-    control_line = (char *) malloc(control_bufsize * sizeof(char));
+    char* control_line = (char*) malloc(control_bufsize * sizeof(char));
     meta_reset(0); meta_reset(1);
 
     while ((r = fread(buf, 1, BUF_SIZE, stdin)) > 0) {
@@ -642,11 +658,20 @@ int main(int argc, char** argv) {
         }
 
         if (control_fifo != NULL) {
+            memset(control_line, 0, control_bufsize);
             ssize_t read;
-            while ((read = fread(control_line, sizeof(char), control_bufsize, control_fifo)) >= 2) {
+            int error;
+            while (!(error = ferror(control_fifo)) && (read = fread(control_line, sizeof(char), control_bufsize, control_fifo)) >= 2) {
                 if (control_line[1] == '\n') {
                     slot_filter = control_line[0] - '0';
                 }
+            }
+
+            // the control fifo is in non-blocking mode so EAGAIN is expected
+            if (error && errno != EAGAIN) {
+                fprintf(stderr, "error on control fifo: %s\n", strerror(errno));
+                fclose(control_fifo);
+                control_fifo = NULL;
             }
         }
     }
