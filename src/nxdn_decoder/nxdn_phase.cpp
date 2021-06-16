@@ -45,8 +45,8 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
     unsigned char sync[SYNC_SIZE];
     data->read((char*) sync, read_pos, SYNC_SIZE);
     if (hamming_distance(sync, (uint8_t*) frameSync, SYNC_SIZE) <= 2) {
-        // increase certainty, cap at 3
-        if (++syncCount > 3) syncCount = 3;
+        // increase certainty, cap at 6
+        if (++syncCount > 6) syncCount = 6;
     } else {
         if (--syncCount < 0) {
             std::cerr << "lost sync at " << read_pos << "\n";
@@ -135,16 +135,20 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
 
             // evaluate steal flag
             if ((option >> (1 - i)) & 1) {
-                // voice is only certain when we actually enter a voice frame
-                ((MetaWriter*) meta)->setSync("voice");
+                // only output actual voice frames if we are confident about the sync
+                if (syncCount >= 1) {
+                    // voice is only certain when we actually enter a voice frame
+                    ((MetaWriter*) meta)->setSync("voice");
 
-                unsigned char voice_frame[18] = { 0 };
-                for (int k = 0; k < 72; k++) {
-                    voice_frame[k / 4] |= (voice_descrambled[k] & 3) << (6 - ((k % 4) * 2));
+                    // take both voice frames in one go. why not?
+                    unsigned char voice_frame[18] = { 0 };
+                    for (int k = 0; k < 72; k++) {
+                        voice_frame[k / 4] |= (voice_descrambled[k] & 3) << (6 - ((k % 4) * 2));
+                    }
+
+                    fwrite(voice_frame, sizeof(char), 18, stdout);
+                    fflush(stdout);
                 }
-
-                fwrite(voice_frame, sizeof(char), 18, stdout);
-                fflush(stdout);
             } else {
                 Facch1* facch1 = Facch1::parse(voice_descrambled);
                 if (facch1 != nullptr) {
