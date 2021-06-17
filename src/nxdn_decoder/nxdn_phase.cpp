@@ -114,11 +114,12 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
             if (sacch != nullptr) {
                 sacchCollector->push(sacch);
                 if (sacchCollector->isComplete()) {
-                    ((MetaWriter*) meta)->setSacch(sacchCollector->getSuperframe());
+                    SacchSuperframe* sacch = sacchCollector->getSuperframe();
+                    if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
+                        ((MetaWriter*) meta)->setSacch(sacch);
+                    }
                     sacchCollector->reset();
                 }
-            } else {
-                sacchCollector->reset();
             }
         }
         data->advance(read_pos, 30);

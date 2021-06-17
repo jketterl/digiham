@@ -27,10 +27,14 @@ const uint8_t Trellis::transitions[16][2] = {
 };
 
 unsigned int Trellis::decode(unsigned char* input, unsigned char* output, size_t len) {
-    uint8_t i;
-    branch *branches = (branch*) malloc(sizeof(branch) * 16);
     uint8_t data_size = (len + 7) / 8;
-    for (i = 0; i < 16; i++) {
+
+    // prior knowledge: we know we start off with four zeros
+    // this variable blocks out parts of the state vars
+    uint8_t blocked = 0b1111;
+
+    branch *branches = (branch*) malloc(sizeof(branch) * 16);
+    for (int i = 0; i < 16; i++) {
         branches[i].metric = 0;
         branches[i].data = (uint8_t*) malloc(data_size);
         memset(branches[i].data, 0, data_size);
@@ -44,12 +48,15 @@ unsigned int Trellis::decode(unsigned char* input, unsigned char* output, size_t
 
         branch *next_branches = (branch*) malloc(sizeof(branch) * 16);
 
-        for (i = 0; i < 16; i++) {
-            uint8_t k;
+        for (int i = 0; i < 16; i++) {
             uint16_t best_metric = -1;
             uint8_t selected = -1;
             uint8_t outbit = (i & 0b1000) >> 3;
-            for (k = 0; k < 2; k++) {
+
+            // prior knowledge: if this state is blocked, only apply for k = 0
+            int limit = 1 + ((i & blocked) == 0);
+
+            for (int k = 0; k < limit; k++) {
                 uint8_t previous_state = (( i << 1 ) & 0b1110 ) | k;
                 uint8_t transition = Trellis::transitions[previous_state][outbit];
                 branch to_evaluate = branches[previous_state];
@@ -70,13 +77,16 @@ unsigned int Trellis::decode(unsigned char* input, unsigned char* output, size_t
 
         }
 
-        for (i = 0; i < 16; i++) free(branches[i].data);
+        for (int i = 0; i < 16; i++) free(branches[i].data);
         free(branches);
         branches = next_branches;
+
+        // rotate out blocked bits
+        blocked = (blocked << 1) & 0b1111;
     }
 
     branch best_branch;
-    for (i = 0; i < 16; i++) {
+    for (int i = 0; i < 16; i++) {
         branch candidate = branches[i];
         if (i == 0 || candidate.metric < best_branch.metric) best_branch = candidate;
     }
@@ -84,7 +94,7 @@ unsigned int Trellis::decode(unsigned char* input, unsigned char* output, size_t
     memcpy(output, best_branch.data, data_size);
     uint16_t best_metric = best_branch.metric;
 
-    for (i = 0; i < 16; i++) free(branches[i].data);
+    for (int i = 0; i < 16; i++) free(branches[i].data);
     free(branches);
 
     return best_metric;
