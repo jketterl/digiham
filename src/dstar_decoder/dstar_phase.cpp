@@ -105,7 +105,11 @@ Digiham::Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
     data->read((char*) data_frame, read_pos, 48);
     data->advance(read_pos, 24);
 
-    if (hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) <= 1) {
+    if (
+        hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) <= 1 ||
+        // some repeaters only send the second half in the data frame
+        hamming_distance(data_frame, ((uint8_t*) terminator) + 24, TERMINATOR_SIZE - 24) <= 1
+    ) {
         // move another 24 since it's clear that this is all used up now
         std::cerr << "terminator frame received, ending voice mode\n";
         data->advance(read_pos, 24);
