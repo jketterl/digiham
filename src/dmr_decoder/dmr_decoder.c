@@ -664,6 +664,8 @@ int main(int argc, char** argv) {
             while (!(error = ferror(control_fifo)) && (read = fread(control_line, sizeof(char), control_bufsize, control_fifo)) >= 2) {
                 if (control_line[1] == '\n') {
                     slot_filter = control_line[0] - '0';
+                    // if the new filter mutes the active slot -> reset active slot
+                    if (((active_slot + 1) & slot_filter) == 0) active_slot = -1;
                 }
             }
 
@@ -672,6 +674,8 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "error on control fifo: %s\n", strerror(errno));
                 fclose(control_fifo);
                 control_fifo = NULL;
+            } else {
+                clearerr(control_fifo);
             }
         }
     }
