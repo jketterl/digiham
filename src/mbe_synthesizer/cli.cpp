@@ -344,7 +344,7 @@ bool Cli::parseOptions(int argc, char** argv) {
         {"test", no_argument, NULL, 't'},
         { NULL, 0, NULL, 0 }
     };
-    while ((c = getopt_long(argc, argv, "yvhs:d", long_options, NULL)) != -1 ) {
+    while ((c = getopt_long(argc, argv, "yvhs:dt", long_options, NULL)) != -1 ) {
         switch (c) {
             case 'y':
                 std::cerr << "enabling codec switching support for yaesu\n";
