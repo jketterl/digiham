@@ -24,7 +24,10 @@ logmin	=
 
 #define NZEROS 10
 #define NPOLES 10
-#define GAIN   2.823549227e+00
+// this is what mkfilter gives us, but i have experienced clipping based on this
+//#define GAIN   2.823549227e+00
+// this seems to work, but is purely based on experimentation
+# define GAIN 5
 
 float xv[NZEROS+1], yv[NPOLES+1];
 
