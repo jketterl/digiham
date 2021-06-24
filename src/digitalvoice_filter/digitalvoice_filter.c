@@ -44,7 +44,7 @@ float filter(float sample) {
     return yv[10];
 }
 
-#define BUF_SIZE 32
+#define BUF_SIZE 160
 short short_buf[BUF_SIZE];
 float float_buf[BUF_SIZE];
 int r = 0;
