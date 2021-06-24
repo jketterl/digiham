@@ -189,7 +189,7 @@ int Cli::main(int argc, char** argv) {
                     std::cerr << "received unexpected message type\n";
                 }
             }
-        } else {
+        //} else {
             // no data, just timeout.
         }
 
