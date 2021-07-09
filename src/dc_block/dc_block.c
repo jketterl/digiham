@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <math.h>
 #include "version.h"
 
 #define BUF_SIZE 256
@@ -38,13 +39,14 @@ int main(int argc, char** argv) {
         }
     }
 
-    float xm1 = 0;
-    float ym1 = 0;
+    float xm1 = 0.0f;
+    float ym1 = 0.0f;
     while ((r = fread(buf, 4, BUF_SIZE, stdin)) > 0) {
         int i;
         for (i = 0; i < r; i++) {
             // dc block filter implementation according to https://www.dsprelated.com/freebooks/filters/DC_Blocker.html
             float x = buf[i];
+            if (isnan(x)) x = 0.0f;
             float y = GAIN * (x - xm1) + R * ym1;
             xm1 = x;
             ym1 = y;
