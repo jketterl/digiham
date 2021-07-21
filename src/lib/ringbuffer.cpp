@@ -10,7 +10,7 @@ Ringbuffer::Ringbuffer(size_t size) {
 }
 
 Ringbuffer::~Ringbuffer() {
-    delete data;
+    free(data);
 }
 
 size_t Ringbuffer::available(size_t read_pos) {
