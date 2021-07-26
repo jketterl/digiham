@@ -7,6 +7,7 @@
 #include "nxdn_meta.hpp"
 
 #include <csdr/reader.hpp>
+#include <csdr/writer.hpp>
 
 #define SYNC_SIZE 10
 // 384 bits or 192 symbols
@@ -22,7 +23,7 @@ namespace Digiham::Nxdn {
     class SyncPhase: public Phase {
         public:
             int getRequiredData() override { return 10; }
-            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
     };
 
     class FramedPhase: public Phase {
@@ -30,7 +31,7 @@ namespace Digiham::Nxdn {
             FramedPhase();
             ~FramedPhase();
             int getRequiredData() override { return FRAME_SIZE; }
-            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
         private:
             int syncCount = 0;
             Scrambler* scrambler;

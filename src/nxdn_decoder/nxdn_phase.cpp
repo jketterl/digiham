@@ -2,6 +2,8 @@
 #include "facch1.hpp"
 #include "types.hpp"
 
+#include <cstring>
+
 #include <iostream>
 
 extern "C" {
@@ -13,7 +15,7 @@ using namespace Digiham::Nxdn;
 // -3. +1, -3, +3, -3, -3, +3, +3, -1, +3
 const uint8_t Phase::frameSync[SYNC_SIZE] = { 3, 0, 3, 1, 3, 3, 1, 1, 2, 1 };
 
-Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data) {
+Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
     uint8_t* potential_sync = data->getReadPointer();
 
     if (hamming_distance(potential_sync, (uint8_t*) frameSync, SYNC_SIZE) <= 2) {
@@ -38,7 +40,7 @@ FramedPhase::~FramedPhase() {
     delete sacchCollector;
 }
 
-Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data) {
+Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
     unsigned char* sync = data->getReadPointer();
     if (hamming_distance(sync, (uint8_t*) frameSync, SYNC_SIZE) <= 2) {
         // increase certainty, cap at 6
@@ -135,13 +137,12 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data) {
                     ((MetaWriter*) meta)->setSync("voice");
 
                     // take both voice frames in one go. why not?
-                    unsigned char voice_frame[18] = { 0 };
+                    unsigned char* voice_frame = output->getWritePointer();
+                    std::memset(voice_frame, 0, 18);
                     for (int k = 0; k < 72; k++) {
                         voice_frame[k / 4] |= (voice_descrambled[k] & 3) << (6 - ((k % 4) * 2));
                     }
-
-                    fwrite(voice_frame, sizeof(char), 18, stdout);
-                    fflush(stdout);
+                    output->advance(18);
                 }
             } else {
                 Facch1* facch1 = Facch1::parse(voice_descrambled);

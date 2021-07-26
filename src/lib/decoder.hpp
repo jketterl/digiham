@@ -14,7 +14,7 @@ namespace Digiham {
     class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:
             Decoder(MetaWriter* meta, Phase* initialPhase);
-            ~Decoder();
+            ~Decoder() override;
             bool canProcess() override;
             void process() override;
             void setMetaFile(FILE* file);
@@ -26,7 +26,7 @@ namespace Digiham {
 
     class Cli {
         public:
-            Cli(Decoder* decoder);
+            explicit Cli(Decoder* decoder);
             virtual ~Cli();
             int main (int argc, char** argv);
         protected:

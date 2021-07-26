@@ -42,13 +42,13 @@ namespace Digiham::DStar {
     class SyncPhase: public Phase {
         public:
             int getRequiredData() override { return SYNC_SIZE; }
-            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
     };
 
     class HeaderPhase: public Phase {
         public:
             int getRequiredData() override { return Header::bits; }
-            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
     };
 
     class VoicePhase: public Phase {
@@ -57,7 +57,7 @@ namespace Digiham::DStar {
             VoicePhase(int frameCount);
             ~VoicePhase();
             int getRequiredData() override { return 72 + 24 + 24; }
-            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
         private:
             bool isSyncDue();
             void resetFrames();
@@ -65,7 +65,7 @@ namespace Digiham::DStar {
             void parseFrameData();
             int frameCount;
             int syncCount;
-            void parseNMEAData(std::string data);
+            void parseNMEAData(const std::string& data);
             Scrambler* scrambler;
             unsigned char collected_data[6] = { 0 };
             unsigned char message[20] = { 0 };

@@ -18,7 +18,7 @@ bool Decoder::canProcess() {
 }
 
 void Decoder::process() {
-    Phase* next = currentPhase->process(reader);
+    Phase* next = currentPhase->process(reader, writer);
     if (next != nullptr) {
         setPhase(next);
     }
@@ -26,9 +26,7 @@ void Decoder::process() {
 
 void Decoder::setPhase(Phase* phase) {
     if (phase == currentPhase) return;
-    if (currentPhase != nullptr) {
-        delete currentPhase;
-    }
+    delete currentPhase;
     currentPhase = phase;
     currentPhase->setMetaWriter(meta);
 }
@@ -53,6 +51,7 @@ int Cli::main(int argc, char** argv) {
     }
 
     decoder->setReader(new Csdr::RingbufferReader<unsigned char>(ringbuffer));
+    decoder->setWriter(new Csdr::StdoutWriter<unsigned char>());
 
     while (read()) {
         while (decoder->canProcess()) {

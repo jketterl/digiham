@@ -11,7 +11,7 @@ extern "C" {
 
 using namespace Digiham::DStar;
 
-Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data) {
+Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
     //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
 
     uint8_t* potential_sync = data->getReadPointer();
@@ -33,7 +33,7 @@ Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data) {
     return this;
 }
 
-Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data) {
+Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
     unsigned char* raw = data->getReadPointer();
 
     Header* header = Header::parse(raw);
@@ -78,20 +78,17 @@ VoicePhase::~VoicePhase() {
     delete scrambler;
 }
 
-Digiham::Phase* VoicePhase::process(Csdr::Reader<unsigned char>* data) {
+Digiham::Phase* VoicePhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
     // only output actual voice frames if we are confident about the sync
     if (syncCount >= 1) {
         unsigned char* voice = data->getReadPointer();
 
-        char* voice_packed = (char*) malloc(sizeof(char) * 9);
-        memset(voice_packed, 0, 9);
+        unsigned char* voice_packed = output->getWritePointer();
+        std::memset(voice_packed, 0, 9);
         for (int i = 0; i < 72; i++) {
             voice_packed[i / 8] |= (voice[i] & 1) << ( i % 8 );
         }
-
-        fwrite(voice_packed, sizeof(char), 9, stdout);
-        fflush(stdout);
-        free(voice_packed);
+        output->advance(9);
     }
     data->advance(72);
 
@@ -220,7 +217,7 @@ void VoicePhase::parseFrameData() {
         }
     }
     size_t pos;
-    while ((pos = simpleData.find("\r")) != std::string::npos) {
+    while ((pos = simpleData.find('\r')) != std::string::npos) {
         std::string something = simpleData.substr(0, pos + 1);
         if (something.length() >= 10 && something.substr(0, 5) == "$$CRC" && something.at(9) == ',') {
             std::stringstream ss;
@@ -242,7 +239,7 @@ void VoicePhase::parseFrameData() {
     }
 }
 
-void VoicePhase::parseNMEAData(std::string input) {
+void VoicePhase::parseNMEAData(const std::string& input) {
     size_t checksum_pos = input.find_last_of("*");
     if (checksum_pos == std::string::npos) {
         std::cerr << "no NMEA checksum available\n";
