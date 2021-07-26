@@ -4,6 +4,17 @@
 
 using namespace Digiham;
 
+bool Decoder::canProcess() {
+    return reader->available() > currentPhase->getRequiredData();
+}
+
+void Decoder::process() {
+    Phase* next = currentPhase->process(reader);
+    if (next != nullptr) {
+        setPhase(next);
+    }
+}
+
 int Decoder::main(int argc, char** argv) {
     if (!parseOptions(argc, argv)) {
         return 0;
@@ -11,11 +22,8 @@ int Decoder::main(int argc, char** argv) {
 
     setPhase(getInitialPhase());
     while (read()) {
-        while (ringbuffer->available(read_pos) > currentPhase->getRequiredData()) {
-            Phase* next = currentPhase->process(ringbuffer, read_pos);
-            if (next != nullptr) {
-                setPhase(next);
-            }
+        while (canProcess()) {
+            process();
         }
     }
     return 0;
@@ -77,9 +85,11 @@ bool Decoder::read() {
 }
 
 Decoder::Decoder(MetaWriter* meta):
-    ringbuffer(new Ringbuffer(RINGBUFFER_SIZE)),
+    ringbuffer(new Csdr::Ringbuffer<unsigned char>(RINGBUFFER_SIZE)),
     meta(meta)
-{}
+{
+    Sink<unsigned char>::setReader(new Csdr::RingbufferReader<unsigned char>(ringbuffer));
+}
 
 Decoder::~Decoder() {
     delete ringbuffer;

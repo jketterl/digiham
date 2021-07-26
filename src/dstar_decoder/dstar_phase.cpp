@@ -11,49 +11,46 @@ extern "C" {
 
 using namespace Digiham::DStar;
 
-Digiham::Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
+Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data) {
     //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
 
-    uint8_t potential_sync[SYNC_SIZE];
-    data->read((char*) potential_sync, read_pos, SYNC_SIZE);
+    uint8_t* potential_sync = data->getReadPointer();
 
     if (hamming_distance(potential_sync, (uint8_t*) header_sync, SYNC_SIZE) <= 2) {
-        data->advance(read_pos, SYNC_SIZE);
+        data->advance(SYNC_SIZE);
         return new HeaderPhase();
     }
 
     if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
-        std::cerr << "found a voice sync at pos " << read_pos << "\n";
-        data->advance(read_pos, SYNC_SIZE);
+        std::cerr << "found a voice sync\n";
+        data->advance(SYNC_SIZE);
         return new VoicePhase(0);
     }
 
     // as long as we don't find any sync, move ahead, bit by bit
-    data->advance(read_pos, 1);
+    data->advance(1);
     // tell decoder that we'll continue
     return this;
 }
 
-Digiham::Phase* HeaderPhase::process(Ringbuffer* data, size_t& read_pos) {
-    unsigned char* raw = (unsigned char*) malloc(sizeof(unsigned char) * Header::bits);
-    data->read((char*) raw, read_pos, Header::bits);
+Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data) {
+    unsigned char* raw = data->getReadPointer();
 
     Header* header = Header::parse(raw);
-    free(raw);
     if (header == nullptr) {
-        data->advance(read_pos, 1);
+        data->advance(1);
         return new SyncPhase();
     }
 
     if (!header->isCrcValid()) {
         delete header;
-        data->advance(read_pos, 1);
+        data->advance(1);
         return new SyncPhase();
     }
 
     std::cerr << "found header: " << header->toString() << "\n";
 
-    data->advance(read_pos, Header::bits);
+    data->advance(Header::bits);
 
     if (header->isVoice()) {
         // only set the header when we're actually entering voice phase
@@ -81,29 +78,25 @@ VoicePhase::~VoicePhase() {
     delete scrambler;
 }
 
-Digiham::Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
+Digiham::Phase* VoicePhase::process(Csdr::Reader<unsigned char>* data) {
     // only output actual voice frames if we are confident about the sync
     if (syncCount >= 1) {
-        char* voice = (char*) malloc(sizeof(char) * 72);
-        data->read(voice, read_pos, 72);
+        unsigned char* voice = data->getReadPointer();
 
         char* voice_packed = (char*) malloc(sizeof(char) * 9);
         memset(voice_packed, 0, 9);
         for (int i = 0; i < 72; i++) {
             voice_packed[i / 8] |= (voice[i] & 1) << ( i % 8 );
         }
-        free(voice);
 
         fwrite(voice_packed, sizeof(char), 9, stdout);
         fflush(stdout);
         free(voice_packed);
     }
-    data->advance(read_pos, 72);
+    data->advance(72);
 
-    // only 24 bits of data, but the terminator is 48 bits long, so we have to look ahead
-    uint8_t* data_frame = (uint8_t*) malloc(sizeof(uint8_t) * 48);
-    data->read((char*) data_frame, read_pos, 48);
-    data->advance(read_pos, 24);
+    uint8_t* data_frame = data->getReadPointer();
+    data->advance(24);
 
     if (
         hamming_distance(data_frame, (uint8_t*) terminator, TERMINATOR_SIZE) <= 1 ||
@@ -112,7 +105,7 @@ Digiham::Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
     ) {
         // move another 24 since it's clear that this is all used up now
         std::cerr << "terminator frame received, ending voice mode\n";
-        data->advance(read_pos, 24);
+        data->advance(24);
         ((MetaWriter*) meta)->reset();
         return new SyncPhase();
     }
@@ -148,8 +141,6 @@ Digiham::Phase* VoicePhase::process(Ringbuffer* data, size_t& read_pos) {
 
         frameCount++;
     }
-
-    free(data_frame);
 
     return this;
 }

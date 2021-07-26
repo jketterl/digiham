@@ -3,14 +3,18 @@
 #include "meta.hpp"
 #include "phase.hpp"
 #include <string>
+#include <csdr/ringbuffer.hpp>
+#include <csdr/module.hpp>
 
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
 
 namespace Digiham {
 
-    class Decoder {
+    class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:
+            bool canProcess() override;
+            void process() override;
             int main (int argc, char** argv);
             Decoder(MetaWriter* meta);
             ~Decoder();
@@ -24,8 +28,7 @@ namespace Digiham {
             bool read();
             void setPhase(Phase* phase);
             MetaWriter* meta;
-            Ringbuffer* ringbuffer;
-            size_t read_pos = 0;
+            Csdr::Ringbuffer<unsigned char>* ringbuffer;
             Phase* currentPhase = nullptr;
     };
 

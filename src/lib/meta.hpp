@@ -10,7 +10,7 @@ namespace Digiham {
         public:
             MetaWriter(FILE* out);
             MetaWriter();
-            ~MetaWriter();
+            virtual ~MetaWriter();
             void setFile(FILE* out);
         protected:
             virtual void sendMetaData() = 0;

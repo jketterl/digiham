@@ -13,20 +13,17 @@ using namespace Digiham::Nxdn;
 // -3. +1, -3, +3, -3, -3, +3, +3, -1, +3
 const uint8_t Phase::frameSync[SYNC_SIZE] = { 3, 0, 3, 1, 3, 3, 1, 1, 2, 1 };
 
-Digiham::Phase* SyncPhase::process(Ringbuffer* data, size_t& read_pos) {
-    //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
-
-    uint8_t potential_sync[SYNC_SIZE];
-    data->read((char*) potential_sync, read_pos, SYNC_SIZE);
+Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data) {
+    uint8_t* potential_sync = data->getReadPointer();
 
     if (hamming_distance(potential_sync, (uint8_t*) frameSync, SYNC_SIZE) <= 2) {
-        std::cerr << "found a frame sync at pos " << read_pos << "\n";
-        //data->advance(read_pos, SYNC_SIZE);
+        std::cerr << "found a frame sync\n";
+        //data->advance(SYNC_SIZE);
         return new FramedPhase();
     }
 
     // as long as we don't find any sync, move ahead, bit by bit
-    data->advance(read_pos, 1);
+    data->advance(1);
     // tell decoder that we'll continue
     return this;
 }
@@ -41,26 +38,24 @@ FramedPhase::~FramedPhase() {
     delete sacchCollector;
 }
 
-Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
-    unsigned char sync[SYNC_SIZE];
-    data->read((char*) sync, read_pos, SYNC_SIZE);
+Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data) {
+    unsigned char* sync = data->getReadPointer();
     if (hamming_distance(sync, (uint8_t*) frameSync, SYNC_SIZE) <= 2) {
         // increase certainty, cap at 6
         if (++syncCount > 6) syncCount = 6;
     } else {
         if (--syncCount < 0) {
-            std::cerr << "lost sync at " << read_pos << "\n";
+            std::cerr << "lost sync\n";
             ((MetaWriter*) meta)->reset();
             return new SyncPhase();
         }
     }
-    data->advance(read_pos, SYNC_SIZE);
+    data->advance(SYNC_SIZE);
 
     scrambler->reset();
 
-    unsigned char lich_raw[8];
-    data->read((char*) lich_raw, read_pos, 8);
-    data->advance(read_pos, 8);
+    unsigned char* lich_raw = data->getReadPointer();
+    data->advance(8);
 
     unsigned char lich_descrambled[8];
     scrambler->scramble(lich_raw, lich_descrambled, 8);
@@ -103,8 +98,7 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
             0b01, 0b11, 0b11, 0b10, 0b00, 0b10
         };
         */
-        unsigned char sacch_raw[30];
-        data->read((char*) sacch_raw, read_pos,  30);
+        unsigned char* sacch_raw = data->getReadPointer();
 
         unsigned char sacch_descrambled[30];
         scrambler->scramble(sacch_raw, sacch_descrambled, 30);
@@ -122,14 +116,13 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
                 }
             }
         }
-        data->advance(read_pos, 30);
+        data->advance(30);
 
         unsigned char option = lich->getOption();
 
         // 2 * 2 voice frames, or maybe voice slots "stolen" by a FACCH1
         for (int i = 0; i < 2; i++) {
-            unsigned char voice[72];
-            data->read((char*) voice, read_pos, 72);
+            unsigned char* voice = data->getReadPointer();
 
             unsigned char voice_descrambled[72];
             scrambler->scramble(voice, voice_descrambled, 72);
@@ -167,11 +160,11 @@ Digiham::Phase* FramedPhase::process(Ringbuffer* data, size_t& read_pos) {
                     delete facch1;
                 }
             }
-            data->advance(read_pos, 72);
+            data->advance(72);
         }
     } else {
         // advance what's left
-        data->advance(read_pos, 174);
+        data->advance(174);
     }
 
     return nullptr;

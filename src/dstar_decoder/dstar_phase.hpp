@@ -1,13 +1,13 @@
 #pragma once
 
 #include "phase.hpp"
-#include "ringbuffer.hpp"
 #include "header.hpp"
 #include "scrambler.hpp"
 #include "dstar_meta.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <csdr/reader.hpp>
 
 #define SYNC_SIZE 24
 #define TERMINATOR_SIZE 48
@@ -42,13 +42,13 @@ namespace Digiham::DStar {
     class SyncPhase: public Phase {
         public:
             int getRequiredData() override { return SYNC_SIZE; }
-            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
     };
 
     class HeaderPhase: public Phase {
         public:
             int getRequiredData() override { return Header::bits; }
-            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
     };
 
     class VoicePhase: public Phase {
@@ -57,7 +57,7 @@ namespace Digiham::DStar {
             VoicePhase(int frameCount);
             ~VoicePhase();
             int getRequiredData() override { return 72 + 24 + 24; }
-            Digiham::Phase* process(Ringbuffer* data, size_t& read_pos) override;
+            Digiham::Phase* process(Csdr::Reader<unsigned char>* data) override;
         private:
             bool isSyncDue();
             void resetFrames();
