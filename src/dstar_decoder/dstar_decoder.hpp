@@ -11,10 +11,4 @@ namespace Digiham::DStar {
             Decoder();
     };
 
-    class Cli: public Digiham::Cli {
-        public:
-            Cli();
-            std::string getName() override;
-    };
-
 }
