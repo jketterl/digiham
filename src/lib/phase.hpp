@@ -7,6 +7,7 @@ namespace Digiham {
 
     class Phase {
         public:
+            virtual ~Phase() = default;
             virtual int getRequiredData() = 0;
             virtual Phase* process(Csdr::Reader<unsigned char>* data) = 0;
             void setMetaWriter(MetaWriter* meta);

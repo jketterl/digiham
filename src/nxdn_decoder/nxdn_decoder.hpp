@@ -7,9 +7,12 @@ namespace Digiham::Nxdn {
     class Decoder: public Digiham::Decoder {
         public:
             Decoder();
-        protected:
+    };
+
+    class Cli: public Digiham::Cli {
+        public:
+            Cli();
             std::string getName() override;
-            Phase* getInitialPhase() override;
     };
 
 }

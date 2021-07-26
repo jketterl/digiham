@@ -13,23 +13,31 @@ namespace Digiham {
 
     class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:
+            Decoder(MetaWriter* meta, Phase* initialPhase);
+            ~Decoder();
             bool canProcess() override;
             void process() override;
+            void setMetaFile(FILE* file);
+        private:
+            void setPhase(Phase* phase);
+            MetaWriter* meta;
+            Phase* currentPhase = nullptr;
+    };
+
+    class Cli {
+        public:
+            Cli(Decoder* decoder);
+            virtual ~Cli();
             int main (int argc, char** argv);
-            Decoder(MetaWriter* meta);
-            ~Decoder();
         protected:
             virtual std::string getName() = 0;
             virtual void printUsage();
             virtual void printVersion();
             virtual bool parseOptions(int argc, char** argv);
-            virtual Phase* getInitialPhase() = 0;
+            Decoder* decoder;
         private:
             bool read();
-            void setPhase(Phase* phase);
-            MetaWriter* meta;
             Csdr::Ringbuffer<unsigned char>* ringbuffer;
-            Phase* currentPhase = nullptr;
     };
 
 }

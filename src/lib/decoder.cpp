@@ -4,6 +4,15 @@
 
 using namespace Digiham;
 
+Decoder::Decoder(MetaWriter* meta, Phase* initialPhase):
+    meta(meta),
+    currentPhase(initialPhase)
+{}
+
+Decoder::~Decoder() {
+    delete meta;
+}
+
 bool Decoder::canProcess() {
     return reader->available() > currentPhase->getRequiredData();
 }
@@ -15,20 +24,6 @@ void Decoder::process() {
     }
 }
 
-int Decoder::main(int argc, char** argv) {
-    if (!parseOptions(argc, argv)) {
-        return 0;
-    }
-
-    setPhase(getInitialPhase());
-    while (read()) {
-        while (canProcess()) {
-            process();
-        }
-    }
-    return 0;
-}
-
 void Decoder::setPhase(Phase* phase) {
     if (phase == currentPhase) return;
     if (currentPhase != nullptr) {
@@ -38,27 +33,56 @@ void Decoder::setPhase(Phase* phase) {
     currentPhase->setMetaWriter(meta);
 }
 
-void Decoder::printUsage() {
-    std::cerr <<
-        getName() << " version " << VERSION << "\n\n" <<
-        "Usage: " << getName() << " [options]\n\n" <<
-        "Available options:\n" <<
-        " -h, --help              show this message\n" <<
-        " -v, --version           print version and exit\n" <<
-        " -f, --fifo          send metadata to this file\n";
+void Decoder::setMetaFile(FILE *file) {
+    meta->setFile(file);
 }
 
-void Decoder::printVersion() {
+Cli::Cli(Decoder* decoder):
+    decoder(decoder),
+    ringbuffer(new Csdr::Ringbuffer<unsigned char>(RINGBUFFER_SIZE))
+{}
+
+Cli::~Cli() {
+    delete decoder;
+    delete ringbuffer;
+}
+
+int Cli::main(int argc, char** argv) {
+    if (!parseOptions(argc, argv)) {
+        return 0;
+    }
+
+    decoder->setReader(new Csdr::RingbufferReader<unsigned char>(ringbuffer));
+
+    while (read()) {
+        while (decoder->canProcess()) {
+            decoder->process();
+        }
+    }
+    return 0;
+}
+
+void Cli::printUsage() {
+    std::cerr <<
+              getName() << " version " << VERSION << "\n\n" <<
+              "Usage: " << getName() << " [options]\n\n" <<
+              "Available options:\n" <<
+              " -h, --help              show this message\n" <<
+              " -v, --version           print version and exit\n" <<
+              " -f, --fifo          send metadata to this file\n";
+}
+
+void Cli::printVersion() {
     std::cout << getName() << " version " << VERSION << "\n";
 }
 
-bool Decoder::parseOptions(int argc, char** argv) {
+bool Cli::parseOptions(int argc, char** argv) {
     int c;
     static struct option long_options[] = {
-        {"version", no_argument, NULL, 'v'},
-        {"help", no_argument, NULL, 'h'},
-        {"fifo", required_argument, NULL, 'f'},
-        { NULL, 0, NULL, 0 }
+            {"version", no_argument, NULL, 'v'},
+            {"help", no_argument, NULL, 'h'},
+            {"fifo", required_argument, NULL, 'f'},
+            { NULL, 0, NULL, 0 }
     };
     while ((c = getopt_long(argc, argv, "vhf:", long_options, NULL)) != -1 ) {
         switch (c) {
@@ -70,7 +94,7 @@ bool Decoder::parseOptions(int argc, char** argv) {
                 return false;
             case 'f':
                 std::cerr << "meta fifo: " << optarg << "\n";
-                meta->setFile(fopen(optarg, "w"));
+                decoder->setMetaFile(fopen(optarg, "w"));
                 break;
         }
     }
@@ -78,20 +102,9 @@ bool Decoder::parseOptions(int argc, char** argv) {
     return true;
 }
 
-bool Decoder::read() {
+bool Cli::read() {
     int r = fread(ringbuffer->getWritePointer(), 1, std::min(ringbuffer->writeable(), (size_t) BUF_SIZE), stdin);
     ringbuffer->advance(r);
     return r > 0;
 }
 
-Decoder::Decoder(MetaWriter* meta):
-    ringbuffer(new Csdr::Ringbuffer<unsigned char>(RINGBUFFER_SIZE)),
-    meta(meta)
-{
-    Sink<unsigned char>::setReader(new Csdr::RingbufferReader<unsigned char>(ringbuffer));
-}
-
-Decoder::~Decoder() {
-    delete ringbuffer;
-    delete meta;
-}

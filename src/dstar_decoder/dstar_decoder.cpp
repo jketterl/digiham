@@ -5,16 +5,14 @@
 using namespace Digiham::DStar;
 
 int main(int argc, char** argv) {
-    Decoder decoder;
-    return decoder.main(argc, argv);
+    Cli runner;
+    return runner.main(argc, argv);
 }
 
-Decoder::Decoder(): Digiham::Decoder(new MetaWriter()) {}
+Decoder::Decoder(): Digiham::Decoder(new MetaWriter(), new SyncPhase()) {}
 
-std::string Decoder::getName() {
+Cli::Cli(): Digiham::Cli(new Decoder()) {}
+
+std::string Cli::getName() {
     return "dstar_decoder";
-}
-
-Digiham::Phase* Decoder::getInitialPhase() {
-    return new SyncPhase();
 }
