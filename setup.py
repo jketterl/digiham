@@ -21,6 +21,7 @@ setup(
             sources=[
                 "src/python/modules.cpp",
                 "src/python/types.cpp",
+                "src/python/dcblock.cpp",
                 "src/python/dstardecoder.cpp",
             ],
             language="c++",
