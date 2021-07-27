@@ -1,7 +1,5 @@
 #pragma once
 
-#include "meta.hpp"
-#include "phase.hpp"
 #include <string>
 #include <csdr/ringbuffer.hpp>
 #include <csdr/module.hpp>
@@ -10,6 +8,12 @@
 #define RINGBUFFER_SIZE 1024
 
 namespace Digiham {
+
+    // private API
+    class Phase;
+
+    // private API
+    class MetaWriter;
 
     class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:

@@ -1,4 +1,2 @@
-add_library(digiham STATIC dumphex.c hamming_distance.c version.c decoder.cpp meta.cpp phase.cpp cli.cpp)
-file(GLOB DIGIHAM_HEADERS "*.h" "*.hpp")
-set_target_properties(digiham PROPERTIES PUBLIC_HEADER "${DIGIHAM_HEADERS}")
-target_include_directories(digiham INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(digiham_util OBJECT dumphex.c hamming_distance.c version.c decoder.cpp meta.cpp phase.cpp cli.cpp)
+target_compile_options(digiham_util PRIVATE "-fPIC")

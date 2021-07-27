@@ -1,3 +1,21 @@
+install(EXPORT DigihamTargets
+    FILE DigihamTargets.cmake
+    NAMESPACE Digiham::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Digiham
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/DigihamConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Digiham
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/DigihamConfig.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Digiham
+)
+
 add_subdirectory(lib)
 add_subdirectory(digitalvoice_filter)
 add_subdirectory(dmr_decoder)
@@ -10,3 +28,16 @@ add_subdirectory(ysf_decoder)
 add_subdirectory(dc_block)
 add_subdirectory(dstar_decoder)
 add_subdirectory(nxdn_decoder)
+
+add_library(digiham SHARED $<TARGET_OBJECTS:digiham_util> $<TARGET_OBJECTS:digiham_dstar> $<TARGET_OBJECTS:digiham_nxdn>)
+target_link_libraries(digiham csdr++)
+set_target_properties(digiham PROPERTIES VERSION ${PROJECT_VERSION})
+file(GLOB DIGIHAM_HEADERS "${PROJECT_SOURCE_DIR}/include/*.hpp" "${PROJECT_SOURCE_DIR}/include/*.h")
+set_target_properties(digiham PROPERTIES PUBLIC_HEADER "${DIGIHAM_HEADERS}")
+
+install(TARGETS digiham
+    EXPORT DigihamTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/digiham
+)
+

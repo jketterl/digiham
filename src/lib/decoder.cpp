@@ -1,4 +1,6 @@
 #include "decoder.hpp"
+#include "phase.hpp"
+#include "meta.hpp"
 
 using namespace Digiham;
 

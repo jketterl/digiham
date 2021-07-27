@@ -7,9 +7,22 @@ Build-Depends: debhelper (>= 11), cmake (>= 3), libcodecserver-dev
 Vcs-Browser: https://github.com/jketterl/digiham
 Vcs-Git: https://github.com/jketterl/digiham.git
 
+Package: libdigiham
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcsdr0 (>= 0.18)
+Description: Digiham base library
+ Contains basic pipeline blocks that can be used to decode amateur radio
+ digital voice modes.
+
+Package: libdigiham-dev
+Architecture: Any
+Depends: libdigiham (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Digiham library development files
+ Contains development files for interfacing with libdigiham.
+
 Package: digiham
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: libdigiham (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Recommends: codecserver
 Description: Tools for decoding digital ham radio communication
  Simple set of command-line tools that is intended to be used to decode

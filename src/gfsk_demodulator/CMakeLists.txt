@@ -1,3 +1,3 @@
 add_executable(gfsk_demodulator gfsk_demodulator.c)
-target_link_libraries(gfsk_demodulator digiham)
+target_link_libraries(gfsk_demodulator digiham m)
 install(TARGETS gfsk_demodulator DESTINATION ${CMAKE_INSTALL_BINDIR})
