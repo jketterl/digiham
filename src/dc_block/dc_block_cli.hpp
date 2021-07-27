@@ -2,9 +2,9 @@
 
 #include "cli.hpp"
 
-namespace Digiham::DStar {
+namespace Digiham::DcBlock {
 
-    class Cli: public Digiham::Cli<unsigned char> {
+    class Cli: public Digiham::Cli<float> {
         public:
             Cli();
             std::string getName() override;

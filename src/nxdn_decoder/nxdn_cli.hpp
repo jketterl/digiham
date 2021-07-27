@@ -4,7 +4,7 @@
 
 namespace Digiham::Nxdn {
 
-    class Cli: public Digiham::Cli {
+    class Cli: public Digiham::Cli<unsigned char> {
         public:
             Cli();
             std::string getName() override;

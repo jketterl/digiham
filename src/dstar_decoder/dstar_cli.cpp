@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
     return runner.main(argc, argv);
 }
 
-Cli::Cli(): Digiham::Cli(new Decoder()) {}
+Cli::Cli(): Digiham::Cli<unsigned char>(new Decoder()) {}
 
 std::string Cli::getName() {
     return "dstar_decoder";
