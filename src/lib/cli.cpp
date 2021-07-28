@@ -109,6 +109,7 @@ namespace Digiham {
     template class Cli<unsigned char, unsigned char>;
     template class Cli<float, float>;
     template class Cli<float, unsigned char>;
+    template class Cli<short, short>;
 }
 
 std::stringstream DecoderCli::getUsageString() {
