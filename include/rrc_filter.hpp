@@ -25,9 +25,9 @@ namespace Digiham {
                 NarrowRrcFilter();
         };
 
-        class WideRrrcFilter: public RrcFilter {
+        class WideRrcFilter: public RrcFilter {
             public:
-                WideRrrcFilter();
+                WideRrcFilter();
         };
 
     }

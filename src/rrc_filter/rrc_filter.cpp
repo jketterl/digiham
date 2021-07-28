@@ -86,7 +86,7 @@ NarrowRrcFilter::NarrowRrcFilter():
 /* Digital filter designed by mkfilter/mkshape/gencode   A.J. Fisher
    Command line: ./mkshape -r 6e-02 2.0e-01 81 -w -l */
 
-WideRrrcFilter::WideRrrcFilter():
+WideRrcFilter::WideRrcFilter():
     RrcFilter(80, 8.337797030e+00,
               (const float[]) {
                       -0.0008938217, -0.0002609230, +0.0005898982, +0.0016095188,

@@ -40,6 +40,6 @@ Csdr::Module<float, float>* Cli::buildModule() {
     if (narrow) {
         return new NarrowRrcFilter();
     } else {
-        return new WideRrrcFilter();
+        return new WideRrcFilter();
     }
 }
