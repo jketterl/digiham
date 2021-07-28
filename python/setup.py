@@ -19,16 +19,14 @@ setup(
         Extension(
             name="digiham.modules",
             sources=[
-                "src/python/modules.cpp",
-                "src/python/types.cpp",
-                "src/python/dcblock.cpp",
-                "src/python/dstardecoder.cpp",
+                "src/modules.cpp",
+                "src/types.cpp",
+                "src/dcblock.cpp",
+                "src/dstardecoder.cpp",
             ],
             language="c++",
             include_dirs=[
-                "src/python",
-                "src/lib",
-                "src/dstar_decoder",
+                "src",
             ],
             libraries=["csdr++", "digiham"],
         )
