@@ -9,7 +9,6 @@ int main(int argc, char** argv) {
 }
 
 Csdr::Module<float, unsigned char>* Cli::buildModule() {
-    // TODO: parse constructor arguments from CLI
     return new FskDemodulator(samplesPerSymbol, invert);
 }
 
