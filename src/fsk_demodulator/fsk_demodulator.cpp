@@ -22,7 +22,7 @@ bool FskDemodulator::canProcess() {
 
 void FskDemodulator::process() {
     float* input = reader->getReadPointer() + variance_offset;
-    float* output = writer->getWritePointer();
+    unsigned char* output = writer->getWritePointer();
     // reset until next vairance evaluation
     variance_offset = 0;
 

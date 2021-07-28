@@ -7,7 +7,7 @@
 
 namespace Digiham {
 
-    template <typename T>
+    template <typename T, typename U>
     class Cli {
         public:
             Cli();
@@ -20,13 +20,13 @@ namespace Digiham {
             virtual bool receiveOption(int c, char* optarg);
             virtual void printVersion();
             virtual bool parseOptions(int argc, char** argv);
-            virtual Csdr::Module<T, T>* buildModule() = 0;
+            virtual Csdr::Module<T, U>* buildModule() = 0;
         private:
             bool read();
             Csdr::Ringbuffer<T>* ringbuffer;
     };
 
-    class DecoderCli: public Cli<unsigned char> {
+    class DecoderCli: public Cli<unsigned char, unsigned char> {
         protected:
             Decoder* buildModule() override = 0;
             std::stringstream getUsageString() override;

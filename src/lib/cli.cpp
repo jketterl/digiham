@@ -5,18 +5,18 @@
 
 using namespace Digiham;
 
-template <typename T>
-Cli<T>::Cli():
+template <typename T, typename U>
+Cli<T, U>::Cli():
     ringbuffer(new Csdr::Ringbuffer<T>(RINGBUFFER_SIZE))
 {}
 
-template <typename T>
-Cli<T>::~Cli() {
+template <typename T, typename U>
+Cli<T, U>::~Cli() {
     delete ringbuffer;
 }
 
-template <typename T>
-int Cli<T>::main(int argc, char** argv) {
+template <typename T, typename U>
+int Cli<T, U>::main(int argc, char** argv) {
     if (!parseOptions(argc, argv)) {
         return 0;
     }
@@ -24,7 +24,7 @@ int Cli<T>::main(int argc, char** argv) {
     auto module = buildModule();
 
     module->setReader(new Csdr::RingbufferReader<T>(ringbuffer));
-    module->setWriter(new Csdr::StdoutWriter<T>());
+    module->setWriter(new Csdr::StdoutWriter<U>());
 
     while (read()) {
         while (module->canProcess()) {
@@ -36,16 +36,16 @@ int Cli<T>::main(int argc, char** argv) {
     return 0;
 }
 
-template <typename T>
-std::vector<struct option> Cli<T>::getOptions() {
+template <typename T, typename U>
+std::vector<struct option> Cli<T, U>::getOptions() {
     return {
         {"version", no_argument,       NULL, 'v'},
         {"help",    no_argument,       NULL, 'h'},
     };
 }
 
-template <typename T>
-std::stringstream Cli<T>::getUsageString() {
+template <typename T, typename U>
+std::stringstream Cli<T, U>::getUsageString() {
     std::stringstream result;
     result <<
            getName() << " version " << VERSION << "\n\n" <<
@@ -56,13 +56,13 @@ std::stringstream Cli<T>::getUsageString() {
     return result;
 }
 
-template <typename T>
-void Cli<T>::printVersion() {
+template <typename T, typename U>
+void Cli<T, U>::printVersion() {
     std::cout << getName() << " version " << VERSION << "\n";
 }
 
-template <typename T>
-bool Cli<T>::parseOptions(int argc, char** argv) {
+template <typename T, typename U>
+bool Cli<T, U>::parseOptions(int argc, char** argv) {
     std::vector<struct option> long_options = getOptions();
     long_options.push_back({ NULL, 0, NULL, 0 });
 
@@ -85,8 +85,8 @@ bool Cli<T>::parseOptions(int argc, char** argv) {
     return true;
 }
 
-template <typename T>
-bool Cli<T>::receiveOption(int c, char *optarg) {
+template <typename T, typename U>
+bool Cli<T, U>::receiveOption(int c, char *optarg) {
     switch (c) {
         case 'v':
             printVersion();
@@ -98,26 +98,27 @@ bool Cli<T>::receiveOption(int c, char *optarg) {
     }
 }
 
-template <typename T>
-bool Cli<T>::read() {
+template <typename T, typename U>
+bool Cli<T, U>::read() {
     int r = fread(ringbuffer->getWritePointer(), sizeof(T), std::min(ringbuffer->writeable(), (size_t) BUF_SIZE), stdin);
     ringbuffer->advance(r);
     return r > 0;
 }
 
 namespace Digiham {
-    template class Cli<unsigned char>;
-    template class Cli<float>;
+    template class Cli<unsigned char, unsigned char>;
+    template class Cli<float, float>;
+    template class Cli<float, unsigned char>;
 }
 
 std::stringstream DecoderCli::getUsageString() {
-    std::stringstream result = Cli<unsigned char>::getUsageString();
+    std::stringstream result = Cli<unsigned char, unsigned char>::getUsageString();
     result << " -f, --fifo          send metadata to this file\n";
     return result;
 }
 
 std::vector<struct option> DecoderCli::getOptions() {
-    std::vector<struct option> options = Cli<unsigned char>::getOptions();
+    std::vector<struct option> options = Cli<unsigned char, unsigned char>::getOptions();
     options.push_back({"fifo", required_argument, NULL, 'f'});
     return options;
 }
@@ -130,7 +131,7 @@ bool DecoderCli::receiveOption(int c, char *optarg) {
             break;
         }
         default:
-            return Cli<unsigned char>::receiveOption(c, optarg);
+            return Cli<unsigned char, unsigned char>::receiveOption(c, optarg);
     }
     return true;
 }

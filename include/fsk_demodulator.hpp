@@ -9,7 +9,7 @@ namespace Digiham {
 
     namespace FskDemodulator {
 
-        class FskDemodulator: public Csdr::Module<float, float> {
+        class FskDemodulator: public Csdr::Module<float, unsigned char> {
             public:
                 explicit FskDemodulator(unsigned int samplesPerSymbol, bool invert = false);
                 ~FskDemodulator() override;
