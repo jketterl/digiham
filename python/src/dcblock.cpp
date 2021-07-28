@@ -6,9 +6,7 @@
 static int DcBlock_init(DcBlock* self, PyObject* args, PyObject* kwds) {
     self->inputFormat = FORMAT_FLOAT;
     self->outputFormat = FORMAT_FLOAT;
-    self->module = new Digiham::DcBlock::DcBlock();
-    self->source = dynamic_cast<Csdr::UntypedSource*>(self->module);
-    self->sink = dynamic_cast<Csdr::UntypedSink*>(self->module);
+    self->setModule(new Digiham::DcBlock::DcBlock());
 
     return 0;
 }

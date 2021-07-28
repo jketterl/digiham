@@ -6,9 +6,7 @@
 static int DstarDecoder_init(DstarDecoder* self, PyObject* args, PyObject* kwds) {
     self->inputFormat = FORMAT_CHAR;
     self->outputFormat = FORMAT_CHAR;
-    self->module = new Digiham::DStar::Decoder();
-    self->source = dynamic_cast<Csdr::UntypedSource*>(self->module);
-    self->sink = dynamic_cast<Csdr::UntypedSink*>(self->module);
+    self->setModule(new Digiham::DStar::Decoder());
 
     return 0;
 }
