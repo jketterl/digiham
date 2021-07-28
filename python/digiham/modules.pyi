@@ -19,3 +19,13 @@ class FskDemodulator(Module):
 class DigitalVoiceFilter(Module):
     def __init__(self):
         ...
+
+
+class WideRrcFilter(Module):
+    def __init__(self):
+        ...
+
+
+class NarrowRrcFilter(Module):
+    def __init__(self):
+        ...

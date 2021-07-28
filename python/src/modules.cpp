@@ -3,6 +3,8 @@
 #include "dstardecoder.hpp"
 #include "fskdemodulator.hpp"
 #include "digitalvoicefilter.hpp"
+#include "narrowrrcfilter.hpp"
+#include "widerrcfilter.hpp"
 
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
@@ -25,6 +27,12 @@ PyInit_modules(void) {
     PyObject* DigitalVoiceFilterType = PyType_FromSpec(&DigitalVoiceFilterSpec);
     if (DigitalVoiceFilterType == NULL) return NULL;
 
+    PyObject* NarrowRrcFilterType = PyType_FromSpec(&NarrowRrcFilterSpec);
+    if (NarrowRrcFilterType == NULL) return NULL;
+
+    PyObject* WideRrcFilterType = PyType_FromSpec(&WideRrcFilterSpec);
+    if (WideRrcFilterType == NULL) return NULL;
+
     PyObject *m = PyModule_Create(&pycsdrmodule);
     if (m == NULL) {
         return NULL;
@@ -37,6 +45,10 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "FskDemodulator", FskDemodulatorType);
 
     PyModule_AddObject(m, "DigitalVoiceFilter", DigitalVoiceFilterType);
+
+    PyModule_AddObject(m, "NarrowRrcFilter", NarrowRrcFilterType);
+
+    PyModule_AddObject(m, "WideRrcFilter", WideRrcFilterType);
 
     return m;
 }

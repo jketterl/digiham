@@ -25,6 +25,8 @@ setup(
                 "src/dstardecoder.cpp",
                 "src/fskdemodulator.cpp",
                 "src/digitalvoicefilter.cpp",
+                "src/narrowrrcfilter.cpp",
+                "src/widerrcfilter.cpp",
             ],
             language="c++",
             include_dirs=[
