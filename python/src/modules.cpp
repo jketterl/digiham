@@ -2,6 +2,7 @@
 #include "dcblock.hpp"
 #include "dstardecoder.hpp"
 #include "fskdemodulator.hpp"
+#include "digitalvoicefilter.hpp"
 
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
@@ -21,6 +22,9 @@ PyInit_modules(void) {
     PyObject* FskDemodulatorType = PyType_FromSpec(&FskDemodulatorSpec);
     if (FskDemodulatorType == NULL) return NULL;
 
+    PyObject* DigitalVoiceFilterType = PyType_FromSpec(&DigitalVoiceFilterSpec);
+    if (DigitalVoiceFilterType == NULL) return NULL;
+
     PyObject *m = PyModule_Create(&pycsdrmodule);
     if (m == NULL) {
         return NULL;
@@ -31,6 +35,8 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "DstarDecoder", DstarDecoderType);
 
     PyModule_AddObject(m, "FskDemodulator", FskDemodulatorType);
+
+    PyModule_AddObject(m, "DigitalVoiceFilter", DigitalVoiceFilterType);
 
     return m;
 }

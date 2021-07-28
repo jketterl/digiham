@@ -14,3 +14,8 @@ class DstarDecoder(Module):
 class FskDemodulator(Module):
     def __init__(self, samplesPerSymbol: int = 40, invert: bool = False):
         ...
+
+
+class DigitalVoiceFilter(Module):
+    def __init__(self):
+        ...
