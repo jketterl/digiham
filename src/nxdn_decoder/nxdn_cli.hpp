@@ -4,10 +4,10 @@
 
 namespace Digiham::Nxdn {
 
-    class Cli: public Digiham::Cli<unsigned char> {
-        public:
-            Cli();
+    class Cli: public Digiham::DecoderCli {
+        protected:
             std::string getName() override;
+            Decoder* buildModule() override;
     };
 
 }

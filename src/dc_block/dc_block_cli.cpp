@@ -8,7 +8,9 @@ int main(int argc, char** argv) {
     return runner.main(argc, argv);
 }
 
-Cli::Cli(): Digiham::Cli<float>(new DcBlock()) {}
+Csdr::Module<float, float> * Cli::buildModule() {
+    return new DcBlock();
+}
 
 std::string Cli::getName() {
     return "dc_block";
