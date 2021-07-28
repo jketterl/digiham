@@ -23,6 +23,7 @@ setup(
                 "src/types.cpp",
                 "src/dcblock.cpp",
                 "src/dstardecoder.cpp",
+                "src/fskdemodulator.cpp",
             ],
             language="c++",
             include_dirs=[

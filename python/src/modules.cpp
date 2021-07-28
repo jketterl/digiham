@@ -1,6 +1,7 @@
 #include "modules.hpp"
 #include "dcblock.hpp"
 #include "dstardecoder.hpp"
+#include "fskdemodulator.hpp"
 
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
@@ -17,6 +18,9 @@ PyInit_modules(void) {
     PyObject* DstarDecoderType = PyType_FromSpec(&DstarDecoderSpec);
     if (DstarDecoderType == NULL) return NULL;
 
+    PyObject* FskDemodulatorType = PyType_FromSpec(&FskDemodulatorSpec);
+    if (FskDemodulatorType == NULL) return NULL;
+
     PyObject *m = PyModule_Create(&pycsdrmodule);
     if (m == NULL) {
         return NULL;
@@ -25,6 +29,8 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "DcBlock", DcBlockType);
 
     PyModule_AddObject(m, "DstarDecoder", DstarDecoderType);
+
+    PyModule_AddObject(m, "FskDemodulator", FskDemodulatorType);
 
     return m;
 }
