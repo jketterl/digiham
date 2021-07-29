@@ -17,3 +17,5 @@ PyObject* getFormat(const char* name);
 PyTypeObject* getAgcProfileType();
 
 #define AGC_PROFILE_TYPE getAgcProfileType()
+
+PyTypeObject* getModuleType();

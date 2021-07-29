@@ -1,6 +1,6 @@
 #include "types.hpp"
 
-static PyObject* getPyCsdrModule() {
+static PyObject* getPyCsdrTypeModule() {
     PyObject* module = PyImport_ImportModule("pycsdr.types");
     if (module == NULL) {
         PyErr_Print();
@@ -9,8 +9,17 @@ static PyObject* getPyCsdrModule() {
     return module;
 }
 
+static PyObject* getPyCsdrModulesModule() {
+    PyObject* module = PyImport_ImportModule("pycsdr.modules");
+    if (module == NULL) {
+        PyErr_Print();
+        exit(1);
+    }
+    return module;
+}
+
 PyTypeObject* getFormatType() {
-    PyObject* module = getPyCsdrModule();
+    PyObject* module = getPyCsdrTypeModule();
 
     PyObject* FormatType = PyObject_GetAttrString(module, "Format");
     if (FormatType == NULL) {
@@ -34,7 +43,7 @@ PyObject* getFormat(const char* name) {
 }
 
 PyTypeObject* getAgcProfileType() {
-    PyObject* module = getPyCsdrModule();
+    PyObject* module = getPyCsdrTypeModule();
 
     PyObject* AgcProfileType = PyObject_GetAttrString(module, "AgcProfile");
     if (AgcProfileType == NULL) {
@@ -45,4 +54,18 @@ PyTypeObject* getAgcProfileType() {
     Py_DECREF(module);
 
     return (PyTypeObject*) AgcProfileType;
+}
+
+PyTypeObject* getModuleType() {
+    PyObject* module = getPyCsdrModulesModule();
+
+    PyObject* ModuleType = PyObject_GetAttrString(module, "Module");
+    if (ModuleType == NULL) {
+        PyErr_Print();
+        exit(1);
+    }
+
+    Py_DECREF(module);
+
+    return (PyTypeObject*) ModuleType;
 }

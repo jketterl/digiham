@@ -1,3 +1,5 @@
+#include "types.hpp"
+
 #include "modules.hpp"
 #include "dcblock.hpp"
 #include "dstardecoder.hpp"
@@ -16,25 +18,39 @@ static PyModuleDef pycsdrmodule = {
 
 PyMODINIT_FUNC
 PyInit_modules(void) {
-    PyObject* DcBlockType = PyType_FromSpec(&DcBlockSpec);
+    PyObject* bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* DcBlockType = PyType_FromSpecWithBases(&DcBlockSpec, bases);
     if (DcBlockType == NULL) return NULL;
 
-    PyObject* DstarDecoderType = PyType_FromSpec(&DstarDecoderSpec);
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* DstarDecoderType = PyType_FromSpecWithBases(&DstarDecoderSpec, bases);
     if (DstarDecoderType == NULL) return NULL;
 
-    PyObject* FskDemodulatorType = PyType_FromSpec(&FskDemodulatorSpec);
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* FskDemodulatorType = PyType_FromSpecWithBases(&FskDemodulatorSpec, bases);
     if (FskDemodulatorType == NULL) return NULL;
 
-    PyObject* DigitalVoiceFilterType = PyType_FromSpec(&DigitalVoiceFilterSpec);
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* DigitalVoiceFilterType = PyType_FromSpecWithBases(&DigitalVoiceFilterSpec, bases);
     if (DigitalVoiceFilterType == NULL) return NULL;
 
-    PyObject* NarrowRrcFilterType = PyType_FromSpec(&NarrowRrcFilterSpec);
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* NarrowRrcFilterType = PyType_FromSpecWithBases(&NarrowRrcFilterSpec, bases);
     if (NarrowRrcFilterType == NULL) return NULL;
 
-    PyObject* WideRrcFilterType = PyType_FromSpec(&WideRrcFilterSpec);
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* WideRrcFilterType = PyType_FromSpecWithBases(&WideRrcFilterSpec, bases);
     if (WideRrcFilterType == NULL) return NULL;
 
-    PyObject* MbeSynthesizerType = PyType_FromSpec(&MbeSynthesizerSpec);
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* MbeSynthesizerType = PyType_FromSpecWithBases(&MbeSynthesizerSpec, bases);
     if (MbeSynthesizerType == NULL) return NULL;
 
     PyObject *m = PyModule_Create(&pycsdrmodule);
