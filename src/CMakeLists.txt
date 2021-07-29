@@ -29,8 +29,17 @@ add_subdirectory(dc_block)
 add_subdirectory(dstar_decoder)
 add_subdirectory(nxdn_decoder)
 
-add_library(digiham SHARED $<TARGET_OBJECTS:digiham_util> $<TARGET_OBJECTS:digiham_dstar> $<TARGET_OBJECTS:digiham_nxdn> $<TARGET_OBJECTS:digiham_dc_block> $<TARGET_OBJECTS:digiham_fsk_demodulator> $<TARGET_OBJECTS:digiham_digitalvoice_filter> $<TARGET_OBJECTS:digiham_rrc_filter>)
-target_link_libraries(digiham csdr++)
+add_library(digiham SHARED
+        $<TARGET_OBJECTS:digiham_util>
+        $<TARGET_OBJECTS:digiham_dstar>
+        $<TARGET_OBJECTS:digiham_nxdn>
+        $<TARGET_OBJECTS:digiham_dc_block>
+        $<TARGET_OBJECTS:digiham_fsk_demodulator>
+        $<TARGET_OBJECTS:digiham_digitalvoice_filter>
+        $<TARGET_OBJECTS:digiham_rrc_filter>
+        $<TARGET_OBJECTS:digiham_mbe>
+)
+target_link_libraries(digiham csdr++ ${CODECSERVER_LIBRARIES})
 set_target_properties(digiham PROPERTIES VERSION ${PROJECT_VERSION})
 file(GLOB DIGIHAM_HEADERS "${PROJECT_SOURCE_DIR}/include/*.hpp" "${PROJECT_SOURCE_DIR}/include/*.h")
 set_target_properties(digiham PROPERTIES PUBLIC_HEADER "${DIGIHAM_HEADERS}")
