@@ -5,6 +5,7 @@
 #include "digitalvoicefilter.hpp"
 #include "narrowrrcfilter.hpp"
 #include "widerrcfilter.hpp"
+#include "mbesynthesizer.hpp"
 
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
@@ -33,6 +34,9 @@ PyInit_modules(void) {
     PyObject* WideRrcFilterType = PyType_FromSpec(&WideRrcFilterSpec);
     if (WideRrcFilterType == NULL) return NULL;
 
+    PyObject* MbeSynthesizerType = PyType_FromSpec(&MbeSynthesizerSpec);
+    if (MbeSynthesizerType == NULL) return NULL;
+
     PyObject *m = PyModule_Create(&pycsdrmodule);
     if (m == NULL) {
         return NULL;
@@ -49,6 +53,8 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "NarrowRrcFilter", NarrowRrcFilterType);
 
     PyModule_AddObject(m, "WideRrcFilter", WideRrcFilterType);
+
+    PyModule_AddObject(m, "MbeSynthesizer", MbeSynthesizerType);
 
     return m;
 }

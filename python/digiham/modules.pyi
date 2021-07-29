@@ -29,3 +29,8 @@ class WideRrcFilter(Module):
 class NarrowRrcFilter(Module):
     def __init__(self):
         ...
+
+
+class MbeSynthesizer(Module):
+    def __init__(self, server: str = ""):
+        ...

@@ -27,6 +27,7 @@ setup(
                 "src/digitalvoicefilter.cpp",
                 "src/narrowrrcfilter.cpp",
                 "src/widerrcfilter.cpp",
+                "src/mbesynthesizer.cpp",
             ],
             language="c++",
             include_dirs=[
