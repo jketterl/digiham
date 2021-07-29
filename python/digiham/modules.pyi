@@ -34,3 +34,8 @@ class NarrowRrcFilter(Module):
 class MbeSynthesizer(Module):
     def __init__(self, server: str = ""):
         ...
+
+
+class NxdnDecoder(Module):
+    def __init__(self):
+        ...

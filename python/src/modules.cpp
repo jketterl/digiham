@@ -8,6 +8,7 @@
 #include "narrowrrcfilter.hpp"
 #include "widerrcfilter.hpp"
 #include "mbesynthesizer.hpp"
+#include "nxdndecoder.hpp"
 
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
@@ -53,6 +54,11 @@ PyInit_modules(void) {
     PyObject* MbeSynthesizerType = PyType_FromSpecWithBases(&MbeSynthesizerSpec, bases);
     if (MbeSynthesizerType == NULL) return NULL;
 
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* NxdnDecoderType = PyType_FromSpecWithBases(&NxdnDecoderSpec, bases);
+    if (NxdnDecoderType == NULL) return NULL;
+
     PyObject *m = PyModule_Create(&pycsdrmodule);
     if (m == NULL) {
         return NULL;
@@ -71,6 +77,8 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "WideRrcFilter", WideRrcFilterType);
 
     PyModule_AddObject(m, "MbeSynthesizer", MbeSynthesizerType);
+
+    PyModule_AddObject(m, "NxdnDecoder", NxdnDecoderType);
 
     return m;
 }

@@ -28,6 +28,7 @@ setup(
                 "src/narrowrrcfilter.cpp",
                 "src/widerrcfilter.cpp",
                 "src/mbesynthesizer.cpp",
+                "src/nxdndecoder.cpp",
             ],
             language="c++",
             include_dirs=[
