@@ -34,7 +34,6 @@ MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port) {
     }
 
     struct addrinfo* rp;
-    int sock;
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if (sock == -1) {
@@ -52,7 +51,7 @@ MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port) {
         throw ConnectionError("could not connect to to server");
     }
 
-    init(sock);
+    init();
 }
 
 MbeSynthesizer::MbeSynthesizer(std::string path) {
@@ -63,7 +62,7 @@ MbeSynthesizer::MbeSynthesizer(std::string path) {
     const char* socket_path = "/tmp/codecserver.sock";
     strncpy(addr.sun_path, socket_path, strlen(socket_path));
 
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
         throw ConnectionError("socket error: " + std::string(strerror(errno)));
     }
@@ -72,12 +71,12 @@ MbeSynthesizer::MbeSynthesizer(std::string path) {
         throw ConnectionError("connection failure: " + std::string(strerror(errno)));
     }
 
-    init(sock);
+    init();
 }
 
 MbeSynthesizer::MbeSynthesizer(): MbeSynthesizer("/tmp/codecserver.sock") {}
 
-void MbeSynthesizer::init(int sock) {
+void MbeSynthesizer::init() {
     connection = new CodecServer::Connection(sock);
     handshake();
     readerThread = new std::thread([this] () { readLoop(); });
@@ -86,8 +85,10 @@ void MbeSynthesizer::init(int sock) {
 MbeSynthesizer::~MbeSynthesizer() {
     run = false;
     if (connection != nullptr) {
+        std::unique_lock<std::mutex> lck(receiveMutex);
         connection->close();
         delete connection;
+        connection = nullptr;
     }
     if (readerThread != nullptr) {
         readerThread->join();
@@ -99,7 +100,7 @@ void MbeSynthesizer::handshake() {
     google::protobuf::Any* message = connection->receiveMessage();
 
     if (message == nullptr) {
-        throw ConnectionError("no response");
+        throw ConnectionError("no handshake");
     }
 
     if (!message->Is<Handshake>()) {
@@ -134,7 +135,7 @@ void MbeSynthesizer::handshake() {
     message = connection->receiveMessage();
 
     if (message == nullptr) {
-        throw ConnectionError("no response");
+        throw ConnectionError("no response to codec request");
     }
 
     if (!message->Is<Response>()) {
@@ -161,34 +162,68 @@ bool MbeSynthesizer::canProcess() {
 }
 
 void MbeSynthesizer::process() {
-    connection->sendChannelData((char*) reader->getReadPointer(), framing.channelbytes());
+    unsigned int bytes = framing.channelbytes();
+    connection->sendChannelData((char*) reader->getReadPointer(), bytes);
+    reader->advance(bytes);
 }
 
 void MbeSynthesizer::readLoop() {
-    while (run) {
-        google::protobuf::Any* message = connection->receiveMessage();
-        if (message == nullptr) break;
+    fd_set read_fds;
+    struct timeval tv = {
+        .tv_sec = 1,
+        .tv_usec = 0
+    };
+    int rc;
+    int nfds = sock + 1;
 
-        if (message->Is<SpeechData>()) {
-            SpeechData* data = new SpeechData();
-            message->UnpackTo(data);
-            std::string output = data->data();
-            if (writer->writeable() * sizeof(short) < output.length()) {
-                std::cerr << "dropping speech data due to writer overflow";
-            } else {
-                std::memcpy(writer->getWritePointer(), output.data(), output.length());
-                writer->advance(output.length() / 2);
+    while (run) {
+        FD_ZERO(&read_fds);
+        FD_SET(sock, &read_fds);
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+
+        rc = select(nfds, &read_fds, NULL, NULL, &tv);
+        if (rc == -1) {
+            std::cerr << "select() error\n";
+            run = false;
+        } else if (rc) {
+            if (FD_ISSET(sock, &read_fds)) {
+                google::protobuf::Any* message = nullptr;
+
+                {
+                    // need to synchronize this with the shutdown since if the connection is closed
+                    // while we receive we hit a double free bug in protobuf
+                    std::unique_lock<std::mutex> lck(receiveMutex);
+                    if (connection != nullptr) {
+                        message = connection->receiveMessage();
+                    }
+                    if (message == nullptr) break;
+                }
+
+                if (message->Is<SpeechData>()) {
+                    SpeechData *data = new SpeechData();
+                    message->UnpackTo(data);
+                    std::string output = data->data();
+                    if (writer->writeable() * sizeof(short) < output.length()) {
+                        std::cerr << "dropping speech data due to writer overflow";
+                    } else {
+                        std::memcpy(writer->getWritePointer(), output.data(), output.length());
+                        writer->advance(output.length() / 2);
+                    }
+                    delete data;
+                } else if (message->Is<Response>()) {
+                    Response *response = new Response();
+                    message->UnpackTo(response);
+                    if (response->has_framing()) {
+                        framing = response->framing();
+                    }
+                    delete response;
+                } else {
+                    std::cerr << "received unexpected message type\n";
+                }
             }
-            delete data;
-        } else if (message->Is<Response>()) {
-            Response* response = new Response();
-            message->UnpackTo(response);
-            if (response->has_framing()) {
-                framing = response->framing();
-            }
-            delete response;
-        } else {
-            std::cerr << "received unexpected message type\n";
+        //} else {
+            // no data, just timeout.
         }
     }
 }

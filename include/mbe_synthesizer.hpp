@@ -4,6 +4,7 @@
 #include <codecserver/connection.hpp>
 #include <codecserver/proto/framing.pb.h>
 #include <thread>
+#include <mutex>
 
 namespace Digiham {
 
@@ -23,13 +24,15 @@ namespace Digiham {
                 bool canProcess() override;
                 void process() override;
             private:
-                void init(int sock);
+                void init();
                 void handshake();
                 void readLoop();
+                int sock;
                 CodecServer::Connection* connection = nullptr;
                 CodecServer::proto::FramingHint framing;
                 std::thread* readerThread = nullptr;
                 bool run = true;
+                std::mutex receiveMutex;
         };
 
     }
