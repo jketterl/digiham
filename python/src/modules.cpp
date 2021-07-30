@@ -4,6 +4,7 @@
 #include "dcblock.hpp"
 #include "dstardecoder.hpp"
 #include "fskdemodulator.hpp"
+#include "gfskdemodulator.hpp"
 #include "digitalvoicefilter.hpp"
 #include "narrowrrcfilter.hpp"
 #include "widerrcfilter.hpp"
@@ -33,6 +34,11 @@ PyInit_modules(void) {
     if (bases == NULL) return NULL;
     PyObject* FskDemodulatorType = PyType_FromSpecWithBases(&FskDemodulatorSpec, bases);
     if (FskDemodulatorType == NULL) return NULL;
+
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
+    PyObject* GfskDemodulatorType = PyType_FromSpecWithBases(&GfskDemodulatorSpec, bases);
+    if (GfskDemodulatorType == NULL) return NULL;
 
     bases = PyTuple_Pack(1, getModuleType());
     if (bases == NULL) return NULL;
@@ -69,6 +75,8 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "DstarDecoder", DstarDecoderType);
 
     PyModule_AddObject(m, "FskDemodulator", FskDemodulatorType);
+
+    PyModule_AddObject(m, "GfskDemodulator", GfskDemodulatorType);
 
     PyModule_AddObject(m, "DigitalVoiceFilter", DigitalVoiceFilterType);
 

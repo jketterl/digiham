@@ -39,3 +39,8 @@ class MbeSynthesizer(Module):
 class NxdnDecoder(Module):
     def __init__(self):
         ...
+
+
+class GfskDemodulator(Module):
+    def __init__(self, samplesPerSymbol: int = 10):
+        ...

@@ -29,6 +29,7 @@ setup(
                 "src/widerrcfilter.cpp",
                 "src/mbesynthesizer.cpp",
                 "src/nxdndecoder.cpp",
+                "src/gfskdemodulator.cpp",
             ],
             language="c++",
             include_dirs=[
