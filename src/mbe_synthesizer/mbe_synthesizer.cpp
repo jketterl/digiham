@@ -10,7 +10,9 @@
 using namespace Digiham::Mbe;
 using namespace CodecServer::proto;
 
-MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port) {
+MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode):
+    mode(mode)
+{
     // IPv6 / IPv4 socket
     struct addrinfo hints;
     struct addrinfo* result;
@@ -54,7 +56,9 @@ MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port) {
     init();
 }
 
-MbeSynthesizer::MbeSynthesizer(std::string path) {
+MbeSynthesizer::MbeSynthesizer(std::string path, Mode* mode):
+    mode(mode)
+{
     // unix domain sockets connection
     sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
@@ -74,7 +78,7 @@ MbeSynthesizer::MbeSynthesizer(std::string path) {
     init();
 }
 
-MbeSynthesizer::MbeSynthesizer(): MbeSynthesizer("/tmp/codecserver.sock") {}
+MbeSynthesizer::MbeSynthesizer(Mode* mode): MbeSynthesizer("/tmp/codecserver.sock", mode) {}
 
 void MbeSynthesizer::init() {
     connection = new CodecServer::Connection(sock);
@@ -122,14 +126,13 @@ void MbeSynthesizer::handshake() {
     Settings* settings = request.mutable_settings();
     settings->clear_directions();
     settings->mutable_directions()->Add(Settings_Direction_DECODE);
-    // TODO figure out how to control this
-    //if (yaesu) {
-    //    (*settings->mutable_args())["index"] = "34";
-    //} else if (dstar) {
-        (*settings->mutable_args())["ratep"] = "0130:0763:4000:0000:0000:0048";
-    //} else {
-    //    (*settings->mutable_args())["index"] = "33";
-    //}
+    TableMode* tmode;
+    ControlWordMode* cmode;
+    if ((tmode = dynamic_cast<TableMode*>(mode))) {
+        (*settings->mutable_args())["index"] = std::to_string(tmode->getIndex());
+    } else if ((cmode = dynamic_cast<ControlWordMode*>(mode))) {
+        (*settings->mutable_args())["ratep"] = cmode->getCwdsAsString();
+    }
     connection->sendMessage(&request);
 
     message = connection->receiveMessage();

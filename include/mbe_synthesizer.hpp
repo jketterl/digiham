@@ -5,6 +5,7 @@
 #include <codecserver/proto/framing.pb.h>
 #include <thread>
 #include <mutex>
+#include "ambe_modes.hpp"
 
 namespace Digiham {
 
@@ -17,9 +18,9 @@ namespace Digiham {
 
         class MbeSynthesizer: public Csdr::Module<unsigned char, short> {
             public:
-                MbeSynthesizer();
-                explicit MbeSynthesizer(std::string path);
-                MbeSynthesizer(const std::string& host, unsigned short port);
+                MbeSynthesizer(Mode* mode);
+                explicit MbeSynthesizer(std::string path, Mode* mode);
+                MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode);
                 ~MbeSynthesizer() override;
                 bool canProcess() override;
                 void process() override;
@@ -27,6 +28,7 @@ namespace Digiham {
                 void init();
                 void handshake();
                 void readLoop();
+                Mode* mode;
                 int sock;
                 CodecServer::Connection* connection = nullptr;
                 CodecServer::proto::FramingHint framing;

@@ -1,4 +1,5 @@
 from pycsdr.modules import Module
+from digiham.ambe import Mode
 
 
 class DcBlock(Module):
@@ -32,7 +33,7 @@ class NarrowRrcFilter(Module):
 
 
 class MbeSynthesizer(Module):
-    def __init__(self, server: str = ""):
+    def __init__(self, mode: Mode, server: str = ""):
         ...
 
 

@@ -19,3 +19,8 @@ PyTypeObject* getAgcProfileType();
 #define AGC_PROFILE_TYPE getAgcProfileType()
 
 PyTypeObject* getModuleType();
+
+PyTypeObject* getAmbeModeType();
+PyTypeObject* getAmbeTableModeType();
+PyTypeObject* getAmbeControlWordModeType();
+PyTypeObject* getAmbeDynamicModeType();

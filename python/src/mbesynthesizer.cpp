@@ -7,10 +7,63 @@ static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* k
     self->inputFormat = FORMAT_CHAR;
     self->outputFormat = FORMAT_SHORT;
 
-    static char* kwlist[] = {(char*) "server", NULL};
+    static char* kwlist[] = {(char*) "mode", (char*) "server", NULL};
 
     char* server = (char*) "";
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist, &server)) {
+    PyObject* mode;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!|s", kwlist, getAmbeModeType(), &mode, &server)) {
+        return -1;
+    }
+
+    Digiham::Mbe::Mode* ambeMode = nullptr;
+
+    PyTypeObject* TableModeType = getAmbeTableModeType();
+    int rc = PyObject_IsInstance(mode, (PyObject*) TableModeType);
+    Py_DECREF(TableModeType);
+
+    if (rc == -1) return -1;
+    if (rc) {
+        PyObject* indexObj = PyObject_CallMethod(mode, "getIndex", NULL);
+        if (!PyLong_Check(indexObj)) {
+            Py_DECREF(indexObj);
+            return -1;
+        }
+        unsigned int index = PyLong_AsUnsignedLong(indexObj);
+        if (PyErr_Occurred()) {
+            Py_DECREF(indexObj);
+            return -1;
+        }
+        Py_DECREF(indexObj);
+
+        ambeMode = new Digiham::Mbe::TableMode(index);
+    }
+
+    PyTypeObject* ControlWordModeType = getAmbeControlWordModeType();
+    rc = PyObject_IsInstance(mode, (PyObject*) ControlWordModeType);
+    Py_DECREF(TableModeType);
+
+    if (rc == -1) return -1;
+    if (rc) {
+        PyObject* controlWordBytes = PyObject_CallMethod(mode, "getBytes", NULL);
+        if (!PyBytes_Check(controlWordBytes)) {
+            Py_DECREF(controlWordBytes);
+            return -1;
+        }
+        if (PyBytes_Size(controlWordBytes) != 12) {
+            Py_DECREF(controlWordBytes);
+            PyErr_SetString(PyExc_ValueError, "control word size mismatch, should be 12");
+            return -1;
+        }
+
+        short* controlWords = (short*) malloc(sizeof(short) * 6);
+        std::memcpy(controlWords, PyBytes_AsString(controlWordBytes), sizeof(short) * 6);
+
+        ambeMode = new Digiham::Mbe::ControlWordMode(controlWords);
+        free(controlWords);
+    }
+
+    if (ambeMode == nullptr) {
+        PyErr_SetString(PyExc_ValueError, "unsupported ambe mode");
         return -1;
     }
 
@@ -19,10 +72,10 @@ static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* k
     try {
         if (!serverString.length()) {
             // no arguments given, use default behavior
-            self->setModule(new Digiham::Mbe::MbeSynthesizer());
+            self->setModule(new Digiham::Mbe::MbeSynthesizer(ambeMode));
         } else if (serverString.at(0) == '/') {
             // is a unix domain socket path
-            self->setModule(new Digiham::Mbe::MbeSynthesizer(serverString));
+            self->setModule(new Digiham::Mbe::MbeSynthesizer(serverString, ambeMode));
         } else {
             // is an IPv4 / IPv6 address or hostname as string
 
@@ -36,7 +89,7 @@ static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* k
                 serverString = serverString.substr(0, pos);
             }
 
-            self->setModule(new Digiham::Mbe::MbeSynthesizer(serverString, port));
+            self->setModule(new Digiham::Mbe::MbeSynthesizer(serverString, port, ambeMode));
         }
     } catch (const Digiham::Mbe::ConnectionError& e) {
         PyErr_SetString(PyExc_ConnectionError, e.what());
