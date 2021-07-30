@@ -1,27 +1,26 @@
 #include <cfloat>
-#include "fsk_demodulator.hpp"
+#include "gfsk_demodulator.hpp"
 
 using namespace Digiham::Fsk;
 
-FskDemodulator::FskDemodulator(unsigned int samplesPerSymbol, bool invert):
+GfskDemodulator::GfskDemodulator(unsigned int samplesPerSymbol):
     samplesPerSymbol(samplesPerSymbol),
-    invert(invert),
     lowestEval((int) roundf((float)samplesPerSymbol / 3)),
     highestEval((int) roundf((float)samplesPerSymbol * 2 / 3)),
     variance_rb_size(VARIANCE_SYMBOLS * samplesPerSymbol),
     variance_rb((float*) malloc(sizeof(float) * variance_rb_size))
 {}
 
-FskDemodulator::~FskDemodulator() {
+GfskDemodulator::~GfskDemodulator() {
     free(variance_rb);
 }
 
-bool FskDemodulator::canProcess() {
+bool GfskDemodulator::canProcess() {
     // +1 for variance calculation "jumps"
     return reader->available() > samplesPerSymbol + 1 && writer->writeable() > 0;
 }
 
-void FskDemodulator::process() {
+void GfskDemodulator::process() {
     float* input = reader->getReadPointer();
 
     float sum = 0.0f;
@@ -89,15 +88,23 @@ void FskDemodulator::process() {
     float average = sum / (highestEval - lowestEval);
 
     if (average > center) {
-        *writer->getWritePointer() = !invert;
+        if (average > umid) {
+            *writer->getWritePointer() = 1;
+        } else {
+            *writer->getWritePointer() = 0;
+        }
     } else {
-        *writer->getWritePointer() = invert;
+        if (average < lmid) {
+            *writer->getWritePointer() = 3;
+        } else {
+            *writer->getWritePointer() = 2;
+        }
     }
 
     writer->advance(1);
 }
 
-void FskDemodulator::calibrateAudio() {
+void GfskDemodulator::calibrateAudio() {
     int i;
     min = FLT_MAX, max = FLT_MIN;
 
@@ -107,4 +114,7 @@ void FskDemodulator::calibrateAudio() {
     }
 
     center = (max + min) / 2;
+
+    umid = (max - center) * 0.625 + center;
+    lmid = (min - center) * 0.625 + center;
 }

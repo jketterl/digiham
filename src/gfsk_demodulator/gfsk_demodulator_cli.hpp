@@ -1,10 +1,9 @@
-#pragma once
-
+#include "gfsk_demodulator.hpp"
 #include "cli.hpp"
 
 namespace Digiham::Fsk {
 
-    class FskCli: public Digiham::Cli<float, unsigned char> {
+    class GfskCli: public Digiham::Cli<float, unsigned char> {
         protected:
             std::string getName() override;
             Csdr::Module<float, unsigned char>* buildModule() override;
@@ -12,8 +11,7 @@ namespace Digiham::Fsk {
             std::vector<struct option> getOptions() override;
             bool receiveOption(int c, char* optarg) override;
         private:
-            unsigned int samplesPerSymbol = 40;
-            bool invert = false;
+            unsigned int samplesPerSymbol = 10;
     };
 
 }

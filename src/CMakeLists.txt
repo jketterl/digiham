@@ -38,6 +38,7 @@ add_library(digiham SHARED
         $<TARGET_OBJECTS:digiham_digitalvoice_filter>
         $<TARGET_OBJECTS:digiham_rrc_filter>
         $<TARGET_OBJECTS:digiham_mbe>
+        $<TARGET_OBJECTS:digiham_gfsk_demodulator>
 )
 target_link_libraries(digiham csdr++ ${CODECSERVER_LIBRARIES})
 set_target_properties(digiham PROPERTIES VERSION ${PROJECT_VERSION})

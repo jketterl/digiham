@@ -9,16 +9,15 @@ namespace Digiham {
 
     namespace Fsk {
 
-        class FskDemodulator: public Csdr::Module<float, unsigned char> {
+        class GfskDemodulator: public Csdr::Module<float, unsigned char> {
             public:
-                explicit FskDemodulator(unsigned int samplesPerSymbol, bool invert = false);
-                ~FskDemodulator() override;
+                explicit GfskDemodulator(unsigned int samplesPerSymbol);
+                ~GfskDemodulator() override;
                 bool canProcess() override;
                 void process() override;
             private:
                 void calibrateAudio();
                 unsigned int samplesPerSymbol;
-                bool invert;
                 unsigned int lowestEval;
                 unsigned int highestEval;
                 unsigned int variance_rb_size;
@@ -30,6 +29,8 @@ namespace Digiham {
                 float min = 0;
                 float max = 0;
                 float center = 0;
+                float umid = 0;
+                float lmid = 0;
         };
 
     }

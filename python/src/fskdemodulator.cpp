@@ -14,7 +14,7 @@ static int FskDemodulator_init(FskDemodulator* self, PyObject* args, PyObject* k
 
     self->inputFormat = FORMAT_FLOAT;
     self->outputFormat = FORMAT_CHAR;
-    self->setModule(new Digiham::FskDemodulator::FskDemodulator(samplesPerSymbol, invert));
+    self->setModule(new Digiham::Fsk::FskDemodulator(samplesPerSymbol, invert));
 
     return 0;
 }
