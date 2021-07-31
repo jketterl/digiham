@@ -79,6 +79,20 @@ PyTypeObject* getModuleType() {
     return (PyTypeObject*) ModuleType;
 }
 
+PyTypeObject* getWriterType() {
+    PyObject* module = getPyCsdrModulesModule();
+
+    PyObject* WriterType = PyObject_GetAttrString(module, "Writer");
+    if (WriterType == NULL) {
+        PyErr_Print();
+        exit(1);
+    }
+
+    Py_DECREF(module);
+
+    return (PyTypeObject*) WriterType;
+}
+
 PyTypeObject* getAmbeModeType() {
     PyObject* module = getDigihamAmbeModule();
 

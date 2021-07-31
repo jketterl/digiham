@@ -20,6 +20,8 @@ PyTypeObject* getAgcProfileType();
 
 PyTypeObject* getModuleType();
 
+PyTypeObject* getWriterType();
+
 PyTypeObject* getAmbeModeType();
 PyTypeObject* getAmbeTableModeType();
 PyTypeObject* getAmbeControlWordModeType();

@@ -1,4 +1,4 @@
-from pycsdr.modules import Module
+from pycsdr.modules import Module, Writer
 from digiham.ambe import Mode
 
 
@@ -9,6 +9,9 @@ class DcBlock(Module):
 
 class DstarDecoder(Module):
     def __init__(self):
+        ...
+
+    def setMetaWriter(self, metaWriter: Writer) -> None:
         ...
 
 
@@ -39,6 +42,9 @@ class MbeSynthesizer(Module):
 
 class NxdnDecoder(Module):
     def __init__(self):
+        ...
+
+    def setMetaWriter(self, metaWriter: Writer) -> None:
         ...
 
 

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <map>
 #include <string>
+#include <csdr/source.hpp>
 
 namespace Digiham {
 
@@ -10,17 +11,24 @@ namespace Digiham {
         public:
             virtual ~MetaWriter() = default;
             virtual void sendMetaData(std::map<std::string, std::string> metadata) = 0;
+        protected:
+            std::string serializeMetaData(std::map<std::string, std::string> metadata);
     };
 
     class FileMetaWriter: public MetaWriter {
         public:
             explicit FileMetaWriter(FILE* out);
             ~FileMetaWriter() override;
-        protected:
             void sendMetaData(std::map<std::string, std::string> metadata) override;
         private:
             FILE* file = nullptr;
     };
+
+    class PipelineMetaWriter: public MetaWriter, public Csdr::Source<unsigned char> {
+        public:
+            void sendMetaData(std::map<std::string, std::string> metadata) override;
+    };
+
 
     class MetaCollector {
         public:

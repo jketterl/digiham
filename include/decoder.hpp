@@ -4,6 +4,8 @@
 #include <csdr/ringbuffer.hpp>
 #include <csdr/module.hpp>
 
+#include "meta.hpp"
+
 #define BUF_SIZE 128
 #define RINGBUFFER_SIZE 1024
 
@@ -11,12 +13,6 @@ namespace Digiham {
 
     // private API
     class Phase;
-
-    // private API
-    class MetaCollector;
-
-    // private API
-    class MetaWriter;
 
     class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:

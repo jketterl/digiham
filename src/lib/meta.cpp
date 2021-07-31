@@ -1,7 +1,18 @@
 #include "meta.hpp"
 #include <sstream>
+#include <cstring>
 
 using namespace Digiham;
+
+std::string MetaWriter::serializeMetaData(std::map<std::string, std::string> metadata) {
+    std::stringstream ss;
+    for (auto it = metadata.begin(); it != metadata.end(); it++) {
+        ss << it->first << ":" << it->second;
+        if (it != metadata.end()) ss << ";";
+    }
+    ss << "\n";
+    return ss.str();
+}
 
 FileMetaWriter::FileMetaWriter(FILE* out): file(out) {}
 
@@ -10,16 +21,17 @@ FileMetaWriter::~FileMetaWriter() {
 }
 
 void FileMetaWriter::sendMetaData(std::map<std::string, std::string> metadata) {
-    std::stringstream ss;
-    for (auto it = metadata.begin(); it != metadata.end(); it++) {
-        ss << it->first << ":" << it->second;
-        if (it != metadata.end()) ss << ";";
-    }
-    ss << "\n";
-
-    std::string metaString = ss.str();
+    std::string metaString = serializeMetaData(metadata);
     fwrite(metaString.c_str(), 1, metaString.length(), file);
     fflush(file);
+}
+
+void PipelineMetaWriter::sendMetaData(std::map<std::string, std::string> metadata) {
+    std::string metaString = serializeMetaData(metadata);
+    // can't write...
+    if (writer->writeable() < metaString.length()) return;
+    std::memcpy(writer->getWritePointer(), metaString.c_str(), metaString.length());
+    writer->advance(metaString.length());
 }
 
 MetaCollector::MetaCollector(MetaWriter *writer): writer(writer) {}
