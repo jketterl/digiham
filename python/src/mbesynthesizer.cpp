@@ -9,11 +9,14 @@ static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* k
 
     static char* kwlist[] = {(char*) "mode", (char*) "server", NULL};
 
+    PyTypeObject* ModeType = getAmbeModeType();
     char* server = (char*) "";
     PyObject* mode;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!|s", kwlist, getAmbeModeType(), &mode, &server)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!|s", kwlist, ModeType, &mode, &server)) {
+        Py_DECREF(ModeType);
         return -1;
     }
+    Py_DECREF(ModeType);
 
     Digiham::Mbe::Mode* ambeMode = nullptr;
 
