@@ -1,6 +1,7 @@
 #pragma once
 
 #include "decoder.hpp"
+#include "meta.hpp"
 #include <sstream>
 #include <vector>
 #include <getopt.h>
@@ -32,7 +33,7 @@ namespace Digiham {
             std::stringstream getUsageString() override;
             std::vector<struct option> getOptions() override;
             bool receiveOption(int c, char* optarg) override;
-            FILE* metaFile = nullptr;
+            MetaWriter* metaWriter = nullptr;
     };
 
 }

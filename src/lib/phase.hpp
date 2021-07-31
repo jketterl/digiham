@@ -11,9 +11,9 @@ namespace Digiham {
             virtual ~Phase() = default;
             virtual int getRequiredData() = 0;
             virtual Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) = 0;
-            void setMetaWriter(MetaWriter* meta);
+            void setMetaCollector(MetaCollector* meta);
         protected:
-            MetaWriter* meta;
+            MetaCollector* meta;
     };
 
 }

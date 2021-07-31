@@ -4,4 +4,6 @@
 
 using namespace Digiham::DStar;
 
-Decoder::Decoder(): Digiham::Decoder(new MetaWriter(), new SyncPhase()) {}
+Decoder::Decoder():
+    Digiham::Decoder(new SyncPhase(), new MetaCollector())
+{}

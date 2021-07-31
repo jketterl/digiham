@@ -6,7 +6,7 @@
 
 namespace Digiham::DStar {
 
-    class MetaWriter: public Digiham::MetaWriter {
+    class MetaCollector: public Digiham::MetaCollector {
         public:
             void setSync(std::string sync);
             void setHeader(Header* header);
@@ -16,12 +16,12 @@ namespace Digiham::DStar {
             void reset();
         protected:
             std::string getProtocol() override;
-            void sendMetaData() override;
+            std::map<std::string, std::string> collect() override;
         private:
             Header* header = nullptr;
-            std::string sync = "";
-            std::string message = "";
-            std::string dprs = "";
+            std::string sync;
+            std::string message;
+            std::string dprs;
             float lat;
             float lon;
             bool gpsSet = false;

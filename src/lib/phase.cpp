@@ -2,6 +2,6 @@
 
 using namespace Digiham;
 
-void Phase::setMetaWriter(MetaWriter* meta) {
+void Phase::setMetaCollector(MetaCollector* meta) {
     this->meta = meta;
 }

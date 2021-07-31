@@ -4,13 +4,14 @@
 
 using namespace Digiham;
 
-Decoder::Decoder(MetaWriter* meta, Phase* initialPhase):
-    meta(meta),
-    currentPhase(initialPhase)
+Decoder::Decoder(Phase* initialPhase, MetaCollector* collector):
+    currentPhase(initialPhase),
+    metaCollector(collector)
 {}
 
 Decoder::~Decoder() {
-    delete meta;
+    delete currentPhase;
+    delete metaCollector;
 }
 
 bool Decoder::canProcess() {
@@ -24,13 +25,13 @@ void Decoder::process() {
     }
 }
 
+void Decoder::setMetaWriter(MetaWriter *writer) {
+    metaCollector->setWriter(writer);
+}
+
 void Decoder::setPhase(Phase* phase) {
     if (phase == currentPhase) return;
     delete currentPhase;
     currentPhase = phase;
-    currentPhase->setMetaWriter(meta);
-}
-
-void Decoder::setMetaFile(FILE *file) {
-    meta->setFile(file);
+    currentPhase->setMetaCollector(metaCollector);
 }

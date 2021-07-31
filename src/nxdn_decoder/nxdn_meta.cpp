@@ -3,10 +3,10 @@
 
 using namespace Digiham::Nxdn;
 
-void MetaWriter::sendMetaData() {
-    std::map<std::string, std::string> metadata;
+std::map<std::string, std::string> MetaCollector::collect() {
+    auto metadata = Digiham::MetaCollector::collect();
 
-    if (sync != "") {
+    if (!sync.empty()) {
         metadata["sync"] = sync;
     }
 
@@ -22,28 +22,26 @@ void MetaWriter::sendMetaData() {
         }
     }
 
-    sendMetaMap(metadata);
+    return metadata;
 }
 
-std::string MetaWriter::getProtocol() {
+std::string MetaCollector::getProtocol() {
     return "NXDN";
 }
 
-void MetaWriter::setSync(std::string sync) {
+void MetaCollector::setSync(std::string sync) {
     if (this->sync == sync) return;
     this->sync = sync;
     sendMetaData();
 }
 
-void MetaWriter::setSacch(SacchSuperframe* sacch) {
-    if (this->sacch != nullptr) {
-        delete this->sacch;
-    }
+void MetaCollector::setSacch(SacchSuperframe* sacch) {
+    delete this->sacch;
     this->sacch = sacch;
     sendMetaData();
 }
 
-void MetaWriter::reset() {
+void MetaCollector::reset() {
     hold();
     setSync("");
     setSacch(nullptr);

@@ -55,7 +55,7 @@ Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
     if (header->isVoice()) {
         // only set the header when we're actually entering voice phase
         // since data phase is not implemented and we don't detect it's end
-        ((MetaWriter*) meta)->setHeader(header);
+        ((MetaCollector*) meta)->setHeader(header);
         return new VoicePhase();
     }
 
@@ -103,21 +103,21 @@ Digiham::Phase* VoicePhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wri
         // move another 24 since it's clear that this is all used up now
         std::cerr << "terminator frame received, ending voice mode\n";
         data->advance(24);
-        ((MetaWriter*) meta)->reset();
+        ((MetaCollector*) meta)->reset();
         return new SyncPhase();
     }
     if (isSyncDue()) {
         if (hamming_distance(data_frame, (uint8_t*) voice_sync, SYNC_SIZE) > 1) {
             if (--syncCount < 0) {
                 std::cerr << "too many missed syncs, ending voice mode\n";
-                ((MetaWriter*) meta)->reset();
+                ((MetaCollector*) meta)->reset();
                 return new SyncPhase();
             }
         } else {
             // increase sync count, cap at 3
             if (++syncCount > 3) syncCount = 3;
             if (syncCount > 1) {
-                ((MetaWriter*) meta)->setSync("voice");
+                ((MetaCollector*) meta)->setSync("voice");
             }
         }
         parseFrameData();
@@ -204,14 +204,14 @@ void VoicePhase::collectDataFrame(unsigned char* data) {
 
 void VoicePhase::parseFrameData() {
     if (messageBlocks == 0x0F) {
-        ((MetaWriter*) meta)->setMessage(std::string((char*)message, 20));
+        ((MetaCollector*) meta)->setMessage(std::string((char*)message, 20));
     }
     if (headerCount == 41) {
         unsigned char* headerData = (unsigned char*) malloc(41);
         memcpy(headerData, header, 41);
         Header* h = new Header(headerData);
         if (h->isCrcValid()) {
-            ((MetaWriter*) meta)->setHeader(h);
+            ((MetaCollector*) meta)->setHeader(h);
         } else {
             delete(h);
         }
@@ -227,7 +227,7 @@ void VoicePhase::parseFrameData() {
 
             bool valid = Crc::isCrcValid((unsigned char*) something.substr(10).c_str(), something.length() - 10, checksum);
             if (valid) {
-                ((MetaWriter*) meta)->setDPRS(something.substr(10, something.length() - 11));
+                ((MetaCollector*) meta)->setDPRS(something.substr(10, something.length() - 11));
             }
         } else if (something.length() > 5 && something.at(0) == '$') {
             parseNMEAData(something);
@@ -285,6 +285,6 @@ void VoicePhase::parseNMEAData(const std::string& input) {
         lon += (lon_combined - lon * 100) / 60;
         if (fields[5] == "W") lon *= -1;
 
-        ((MetaWriter*) meta)->setGPS(lat, lon);
+        ((MetaCollector*) meta)->setGPS(lat, lon);
     }
 }

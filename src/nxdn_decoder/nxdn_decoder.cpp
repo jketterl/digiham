@@ -4,5 +4,5 @@
 
 using namespace Digiham::Nxdn;
 
-Decoder::Decoder(): Digiham::Decoder(new MetaWriter(), new SyncPhase) {}
+Decoder::Decoder(): Digiham::Decoder(new SyncPhase, new MetaCollector) {}
 

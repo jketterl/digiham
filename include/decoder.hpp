@@ -13,19 +13,22 @@ namespace Digiham {
     class Phase;
 
     // private API
+    class MetaCollector;
+
+    // private API
     class MetaWriter;
 
     class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:
-            Decoder(MetaWriter* meta, Phase* initialPhase);
+            explicit Decoder(Phase* initialPhase, MetaCollector* collector);
             ~Decoder() override;
             bool canProcess() override;
             void process() override;
-            void setMetaFile(FILE* file);
+            void setMetaWriter(MetaWriter* meta);
         private:
             void setPhase(Phase* phase);
-            MetaWriter* meta;
-            Phase* currentPhase = nullptr;
+            MetaCollector* metaCollector;
+            Phase* currentPhase;
     };
 
 }

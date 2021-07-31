@@ -8,19 +8,35 @@ namespace Digiham {
 
     class MetaWriter {
         public:
-            MetaWriter(FILE* out);
-            MetaWriter();
-            virtual ~MetaWriter();
-            void setFile(FILE* out);
+            virtual ~MetaWriter() = default;
+            virtual void sendMetaData(std::map<std::string, std::string> metadata) = 0;
+    };
+
+    class FileMetaWriter: public MetaWriter {
+        public:
+            explicit FileMetaWriter(FILE* out);
+            ~FileMetaWriter() override;
         protected:
-            virtual void sendMetaData() = 0;
-            void sendMetaMap(std::map<std::string, std::string> metadata);
+            void sendMetaData(std::map<std::string, std::string> metadata) override;
+        private:
+            FILE* file = nullptr;
+    };
+
+    class MetaCollector {
+        public:
+            MetaCollector();
+            explicit MetaCollector(MetaWriter* writer);
+            virtual ~MetaCollector();
+            void setWriter(MetaWriter* writer);
+        protected:
             virtual std::string getProtocol() = 0;
+            virtual std::map<std::string, std::string> collect();
+            void sendMetaData();
             void hold();
             void release();
         private:
-            FILE* file = nullptr;
             bool held = false;
+            MetaWriter* writer;
     };
 
 }

@@ -1,15 +1,14 @@
 #include "dstar_meta.hpp"
-#include <sstream>
 
 using namespace Digiham::DStar;
 
-void MetaWriter::setSync(std::string sync) {
+void MetaCollector::setSync(std::string sync) {
     if (sync == this->sync) return;
     this->sync = sync;
     sendMetaData();
 }
 
-void MetaWriter::setHeader(Header* header) {
+void MetaCollector::setHeader(Header* header) {
     if (this->header != nullptr) {
         delete(this->header);
     }
@@ -26,26 +25,26 @@ void MetaWriter::setHeader(Header* header) {
     sendMetaData();
 }
 
-void MetaWriter::setMessage(std::string message) {
+void MetaCollector::setMessage(std::string message) {
     if (message == this->message) return;
     this->message = message;
     sendMetaData();
 }
 
-void MetaWriter::setDPRS(std::string dprs) {
+void MetaCollector::setDPRS(std::string dprs) {
     if (dprs == this->dprs) return;
     this->dprs = dprs;
     sendMetaData();
 }
 
-void MetaWriter::setGPS(float lat, float lon) {
+void MetaCollector::setGPS(float lat, float lon) {
     if (gpsSet && this->lat == lat && this->lon == lon) return;
     this->lat = lat;
     this->lon = lon;
     gpsSet = true;
 }
 
-void MetaWriter::reset() {
+void MetaCollector::reset() {
     hold();
     setHeader(nullptr);
     setSync("");
@@ -56,14 +55,14 @@ void MetaWriter::reset() {
     release();
 }
 
-std::string MetaWriter::getProtocol() {
+std::string MetaCollector::getProtocol() {
     return "DSTAR";
 }
 
-void MetaWriter::sendMetaData() {
-    std::map<std::string, std::string> metadata;
+std::map<std::string, std::string> MetaCollector::collect() {
+    auto metadata = Digiham::MetaCollector::collect();
 
-    if (sync != "") {
+    if (!sync.empty()) {
         metadata["sync"] = sync;
     }
 
@@ -74,11 +73,11 @@ void MetaWriter::sendMetaData() {
         metadata["yourcall"] = header->getCompanion();
     }
 
-    if (message != "") {
+    if (!message.empty()) {
         metadata["message"] = message;
     }
 
-    if (dprs != "") {
+    if (!dprs.empty()) {
         metadata["dprs"] = dprs;
     }
 
@@ -87,5 +86,5 @@ void MetaWriter::sendMetaData() {
         metadata["lon"] = std::to_string(lon);
     }
 
-    sendMetaMap(metadata);
+    return metadata;
 }

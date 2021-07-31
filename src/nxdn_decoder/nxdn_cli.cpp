@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
 
 Digiham::Decoder* Cli::buildModule() {
     auto decoder = new Decoder();
-    decoder->setMetaFile(metaFile);
+    decoder->setMetaWriter(metaWriter);
     return decoder;
 }
 

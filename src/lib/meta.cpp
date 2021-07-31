@@ -3,41 +3,53 @@
 
 using namespace Digiham;
 
-MetaWriter::MetaWriter(FILE* out): file(out) {}
+FileMetaWriter::FileMetaWriter(FILE* out): file(out) {}
 
-MetaWriter::MetaWriter(): MetaWriter(nullptr) {}
-
-MetaWriter::~MetaWriter() {
-    if (file != nullptr) {
-        fclose(file);
-    }
+FileMetaWriter::~FileMetaWriter() {
+    fclose(file);
 }
 
-void MetaWriter::setFile(FILE* out) {
-    file = out;
-}
-
-void MetaWriter::hold() {
-    held = true;
-}
-
-void MetaWriter::release() {
-    held = false;
-    sendMetaData();
-}
-
-void MetaWriter::sendMetaMap(std::map<std::string, std::string> metadata) {
+void FileMetaWriter::sendMetaData(std::map<std::string, std::string> metadata) {
     std::stringstream ss;
-    ss << "protocol:" << getProtocol();
-    for (std::map<std::string, std::string>::iterator it = metadata.begin(); it != metadata.end(); it++) {
-        ss << ";" << it->first << ":" << it->second;
+    for (auto it = metadata.begin(); it != metadata.end(); it++) {
+        ss << it->first << ":" << it->second;
+        if (it != metadata.end()) ss << ";";
     }
     ss << "\n";
 
     std::string metaString = ss.str();
-    if (held || file == nullptr) {
-        return;
-    }
     fwrite(metaString.c_str(), 1, metaString.length(), file);
     fflush(file);
+}
+
+MetaCollector::MetaCollector(MetaWriter *writer): writer(writer) {}
+
+MetaCollector::MetaCollector(): MetaCollector(nullptr) {}
+
+MetaCollector::~MetaCollector() {
+    delete writer;
+}
+
+void MetaCollector::setWriter(MetaWriter *writer) {
+    delete this->writer;
+    this->writer = writer;
+}
+
+void MetaCollector::hold() {
+    held = true;
+}
+
+void MetaCollector::release() {
+    held = false;
+    sendMetaData();
+}
+
+std::map<std::string, std::string> MetaCollector::collect() {
+    return std::map<std::string, std::string> { {"protocol", getProtocol()} };
+}
+
+
+void MetaCollector::sendMetaData() {
+    if (writer == nullptr || held) return;
+    writer->sendMetaData(collect());
 }

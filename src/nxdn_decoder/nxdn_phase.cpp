@@ -48,7 +48,7 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
     } else {
         if (--syncCount < 0) {
             std::cerr << "lost sync\n";
-            ((MetaWriter*) meta)->reset();
+            ((MetaCollector*) meta)->reset();
             return new SyncPhase();
         }
     }
@@ -112,7 +112,7 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
                 if (sacchCollector->isComplete()) {
                     SacchSuperframe* sacch = sacchCollector->getSuperframe();
                     if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
-                        ((MetaWriter*) meta)->setSacch(sacch);
+                        ((MetaCollector*) meta)->setSacch(sacch);
                     }
                     sacchCollector->reset();
                 }
@@ -134,7 +134,7 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
                 // only output actual voice frames if we are confident about the sync
                 if (syncCount >= 1) {
                     // voice is only certain when we actually enter a voice frame
-                    ((MetaWriter*) meta)->setSync("voice");
+                    ((MetaCollector*) meta)->setSync("voice");
 
                     // take both voice frames in one go. why not?
                     unsigned char* voice_frame = output->getWritePointer();
@@ -150,7 +150,7 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
                     switch (facch1->getMessageType()) {
                         case NXDN_MESSAGE_TYPE_TX_RELEASE:
                             std::cerr << "FAACH1 signals TX release\n";
-                            ((MetaWriter*) meta)->reset();
+                            ((MetaCollector*) meta)->reset();
                             delete facch1;
                             return new SyncPhase();
                         case NXDN_MESSAGE_TYPE_IDLE:

@@ -6,16 +6,16 @@
 
 namespace Digiham::Nxdn {
 
-    class MetaWriter: public Digiham::MetaWriter {
+    class MetaCollector: public Digiham::MetaCollector {
         public:
             void setSync(std::string sync);
             void setSacch(SacchSuperframe* sacch);
             void reset();
         protected:
-            void sendMetaData() override;
+            std::map<std::string, std::string> collect() override;
             std::string getProtocol() override;
         private:
-            std::string sync = "";
+            std::string sync;
             SacchSuperframe* sacch = nullptr;
     };
 

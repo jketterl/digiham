@@ -128,7 +128,7 @@ bool DecoderCli::receiveOption(int c, char *optarg) {
     switch (c) {
         case 'f': {
             std::cerr << "meta fifo: " << optarg << "\n";
-            metaFile = fopen(optarg, "w");
+            metaWriter = new FileMetaWriter(fopen(optarg, "w"));
             break;
         }
         default:
