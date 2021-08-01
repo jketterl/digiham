@@ -1,6 +1,7 @@
 #include <sys/un.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <cstring>
 #include <codecserver/proto/handshake.pb.h>
 #include <codecserver/proto/request.pb.h>
 #include <codecserver/proto/response.pb.h>

@@ -1,6 +1,7 @@
 #include "mbesynthesizer.hpp"
 #include "types.hpp"
 
+#include <cstring>
 #include <digiham/mbe_synthesizer.hpp>
 
 static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* kwds) {
