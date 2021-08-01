@@ -20,6 +20,6 @@ PyType_Spec WideRrcFilterSpec = {
     "digiham.modules.WideRrcFilter",
     sizeof(WideRrcFilter),
     0,
-    Py_TPFLAGS_DEFAULT,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_FINALIZE,
     WideRrcFilterSlots
 };

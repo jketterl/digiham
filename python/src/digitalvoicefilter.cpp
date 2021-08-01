@@ -20,6 +20,6 @@ PyType_Spec DigitalVoiceFilterSpec = {
     "digiham.modules.DigitalVoiceFilter",
     sizeof(DigitalVoiceFilter),
     0,
-    Py_TPFLAGS_DEFAULT,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_FINALIZE,
     DigitalVoiceFilterSlots
 };

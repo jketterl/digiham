@@ -62,6 +62,6 @@ PyType_Spec DstarDecoderSpec = {
     "digiham.modules.DstarDecoder",
     sizeof(DstarDecoder),
     0,
-    Py_TPFLAGS_DEFAULT,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_FINALIZE,
     DstarDecoderSlots
 };

@@ -28,6 +28,6 @@ PyType_Spec FskDemodulatorSpec = {
     "digiham.modules.FskDemodulator",
     sizeof(FskDemodulator),
     0,
-    Py_TPFLAGS_DEFAULT,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_FINALIZE,
     FskDemodulatorSlots
 };

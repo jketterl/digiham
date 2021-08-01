@@ -27,6 +27,6 @@ PyType_Spec GfskDemodulatorSpec = {
         "digiham.modules.GfskDemodulator",
         sizeof(GfskDemodulator),
         0,
-        Py_TPFLAGS_DEFAULT,
+        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_FINALIZE,
         GfskDemodulatorSlots
 };

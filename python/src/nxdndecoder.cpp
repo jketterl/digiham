@@ -61,6 +61,6 @@ PyType_Spec NxdnDecoderSpec = {
     "digiham.modules.NxdnDecoder",
     sizeof(NxdnDecoder),
     0,
-    Py_TPFLAGS_DEFAULT,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_FINALIZE,
     NxdnDecoderSlots
 };
