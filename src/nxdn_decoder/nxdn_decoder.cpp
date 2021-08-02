@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
 Decoder::Decoder(): Digiham::Decoder(new MetaWriter()) {}
 
 std::string Decoder::getName() {
-    return "dstar_decoder";
+    return "nxdn_decoder";
 }
 
 Digiham::Phase* Decoder::getInitialPhase() {
