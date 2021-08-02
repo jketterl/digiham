@@ -14,7 +14,7 @@ include(GNUInstallDirs)
 
 find_package(CodecServer REQUIRED)
 
-find_package(Csdr REQUIRED)
+find_package(Csdr 0.18 REQUIRED)
 
 SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
 SET(CMAKE_C_FLAGS_RELEASE "-O3")
