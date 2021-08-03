@@ -5,7 +5,7 @@ from setuptools import setup, Extension
 
 setup(
     name="digiham",
-    version="0.5.0-dev",
+    version="0.6.0-dev",
     packages=["digiham"],
 
     package_data={
