@@ -1,12 +1,17 @@
-digiham (0.5.0) UNRELEASED; urgency=low
+digiham (0.6.0) UNRELEASED; urgency=low
+
+ -- Jakob Ketterl <jakob.ketterl@gmx.de>  Mon, 02 Aug 2021 19:43:00 +0000
+
+digiham (0.5.0) buster hirsute; urgency=low
 
   * Replaces mbelib integration with a codecserver client
   * Adds decoders for D-Star and NXDN
   * Fixes a buffer overflow issue that caused crashes when decoding hotspots
 
- -- Jakob Ketterl <jakob.ketterl@gmx.de>  Sat, 08 May 2021 22:19:00 +0000
+ -- Jakob Ketterl <jakob.ketterl@gmx.de>  Mon, 02 Aug 2021 15:17:00 +0000
 
 digiham (0.4.0) buster hirsute; urgency=low
+
   * First release using debian build system; first changelog entry.
   * Improved dc_block performance for use in M17
 
