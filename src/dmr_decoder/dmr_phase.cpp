@@ -8,6 +8,8 @@ extern "C" {
 #include "hamming_distance.h"
 }
 
+#include <iostream>
+
 using namespace Digiham::Dmr;
 
 int Phase::getSyncType(unsigned char *potentialSync) {
@@ -42,12 +44,15 @@ Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writ
 }
 
 FramePhase::FramePhase():
-    embCollectors { new EmbeddedCollector(), new EmbeddedCollector() }
+    embCollectors { new EmbeddedCollector(), new EmbeddedCollector() },
+    talkerAliasCollector { new TalkerAliasCollector(), new TalkerAliasCollector }
 {}
 
-FramePhase::~FramePhase() noexcept {
+FramePhase::~FramePhase() {
     delete embCollectors[0];
     delete embCollectors[1];
+    delete talkerAliasCollector[0];
+    delete talkerAliasCollector[1];
 }
 
 int FramePhase::getRequiredData() {
@@ -145,11 +150,32 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                     collector->collect(embedded_data);
                     Lc* lc = collector->getLc();
                     if (lc != nullptr) {
-                        ((MetaCollector*) meta)->withSlot(slot, [lc] (Slot* s) { s->setFromLc(lc); });
+                        unsigned char opcode = lc->getOpCode();
+                        switch (lc->getOpCode()) {
+                            case LC_OPCODE_GROUP:
+                            case LC_OPCODE_UNIT_TO_UNIT:
+                                ((MetaCollector*) meta)->withSlot(slot, [lc] (Slot* s) { s->setFromLc(lc); });
+                                break;
+                            case LC_TALKER_ALIAS_HDR:
+                                talkerAliasCollector[slot]->setHeader(lc->getData());
+                                break;
+                            case LC_TALKER_ALIAS_BLK1:
+                            case LC_TALKER_ALIAS_BLK2:
+                            case LC_TALKER_ALIAS_BLK3:
+                                talkerAliasCollector[slot]->setBlock(lc->getOpCode() - LC_TALKER_ALIAS_BLK1, lc->getData());
+                                break;
+                            default:
+                                std::cerr << "unknown opcode: " << +lc->getOpCode() << "\n";
+                                break;
+                        }
                         delete lc;
                     }
                     collector->reset();
                     break;
+            }
+
+            if (talkerAliasCollector[slot]->isComplete()) {
+                std::cerr << "talker alias: " << talkerAliasCollector[slot]->getContents() << "\n";
             }
         }
 
@@ -178,6 +204,9 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
             if (activeSlot == slot) {
                 activeSlot = -1;
             }
+
+            embCollectors[slot]->reset();
+            talkerAliasCollector[slot]->reset();
         }
     }
 

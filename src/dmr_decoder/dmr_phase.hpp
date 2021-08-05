@@ -2,6 +2,7 @@
 
 #include "phase.hpp"
 #include "embedded.hpp"
+#include "talkeralias.hpp"
 
 #define SYNC_SIZE 24
 
@@ -49,6 +50,7 @@ namespace Digiham::Dmr {
             int slotStability = 0;
             int syncTypes[2] = {-1, -1};
             EmbeddedCollector* embCollectors[2];
+            TalkerAliasCollector* talkerAliasCollector[2];
             int activeSlot = -1;
             unsigned char slotFilter = 3;
     };

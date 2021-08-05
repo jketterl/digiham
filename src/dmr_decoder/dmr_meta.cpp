@@ -32,17 +32,15 @@ void Slot::setFromLc(Lc *lc) {
     switch (lc->getOpCode()) {
         case LC_OPCODE_GROUP:
             setType(META_TYPE_GROUP);
-            setTarget(lc->getTarget());
-            setSource(lc->getSource());
             break;
         case LC_OPCODE_UNIT_TO_UNIT:
             setType(META_TYPE_DIRECT);
-            setTarget(lc->getTarget());
-            setSource(lc->getSource());
             break;
         default:
             break;
     }
+    setTarget(lc->getTarget());
+    setSource(lc->getSource());
 }
 
 bool Slot::isDirty() {

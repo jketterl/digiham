@@ -23,3 +23,7 @@ uint32_t Lc::getTarget() {
     uint32_t target_id = data[3] << 16 | data[4] << 8 | data[5];
     return target_id;
 }
+
+unsigned char* Lc::getData() {
+    return data + 2;
+}
