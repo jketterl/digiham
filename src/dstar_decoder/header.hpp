@@ -9,7 +9,7 @@ namespace Digiham::DStar {
             static Header* parse(unsigned char* raw);
             static const unsigned int bits = 660;
 
-            Header(unsigned char* data);
+            explicit Header(unsigned char* data);
             ~Header();
             bool isCrcValid();
             bool isData();

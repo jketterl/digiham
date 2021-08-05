@@ -39,6 +39,7 @@ add_library(digiham SHARED
         $<TARGET_OBJECTS:digiham_rrc_filter>
         $<TARGET_OBJECTS:digiham_mbe>
         $<TARGET_OBJECTS:digiham_gfsk_demodulator>
+        $<TARGET_OBJECTS:digiham_dmr_decoder>
 )
 target_link_libraries(digiham Csdr::csdr++ CodecServer::codecserver)
 set_target_properties(digiham PROPERTIES VERSION ${PROJECT_VERSION})

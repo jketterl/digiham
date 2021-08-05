@@ -51,3 +51,8 @@ class NxdnDecoder(Module):
 class GfskDemodulator(Module):
     def __init__(self, samplesPerSymbol: int = 10):
         ...
+
+
+class DmrDecoder(Module):
+    def __init__(self):
+        ...

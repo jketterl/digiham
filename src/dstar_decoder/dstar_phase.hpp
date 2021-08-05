@@ -54,8 +54,8 @@ namespace Digiham::DStar {
     class VoicePhase: public Phase {
         public:
             VoicePhase();
-            VoicePhase(int frameCount);
-            ~VoicePhase();
+            explicit VoicePhase(int frameCount);
+            ~VoicePhase() override;
             int getRequiredData() override { return 72 + 24 + 24; }
             Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
         private:
@@ -72,7 +72,7 @@ namespace Digiham::DStar {
             unsigned char messageBlocks = 0;
             unsigned char header[41] = { 0 };
             unsigned char headerCount = 0;
-            std::string simpleData = "";
+            std::string simpleData;
     };
 
 }

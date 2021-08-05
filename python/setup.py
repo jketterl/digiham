@@ -30,6 +30,7 @@ setup(
                 "src/mbesynthesizer.cpp",
                 "src/nxdndecoder.cpp",
                 "src/gfskdemodulator.cpp",
+                "src/dmrdecoder.cpp",
             ],
             language="c++",
             include_dirs=[
