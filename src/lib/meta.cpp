@@ -7,8 +7,8 @@ using namespace Digiham;
 std::string MetaWriter::serializeMetaData(std::map<std::string, std::string> metadata) {
     std::stringstream ss;
     for (auto it = metadata.begin(); it != metadata.end(); it++) {
+        if (it != metadata.begin()) ss << ";";
         ss << it->first << ":" << it->second;
-        if (it != metadata.end()) ss << ";";
     }
     ss << "\n";
     return ss.str();
