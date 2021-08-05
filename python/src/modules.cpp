@@ -1,6 +1,7 @@
 #include "types.hpp"
 
 #include "modules.hpp"
+#include "decoder.hpp"
 #include "dcblock.hpp"
 #include "dstardecoder.hpp"
 #include "fskdemodulator.hpp"
@@ -23,10 +24,16 @@ PyMODINIT_FUNC
 PyInit_modules(void) {
     PyObject* bases = PyTuple_Pack(1, getModuleType());
     if (bases == NULL) return NULL;
+    PyObject* DecoderType = PyType_FromSpecWithBases(&DecoderSpec, bases);
+    if (DecoderType == NULL) return NULL;
+
+    bases = PyTuple_Pack(1, getModuleType());
+    if (bases == NULL) return NULL;
     PyObject* DcBlockType = PyType_FromSpecWithBases(&DcBlockSpec, bases);
     if (DcBlockType == NULL) return NULL;
 
-    bases = PyTuple_Pack(1, getModuleType());
+    Py_INCREF(DecoderType);
+    bases = PyTuple_Pack(1, DecoderType);
     if (bases == NULL) return NULL;
     PyObject* DstarDecoderType = PyType_FromSpecWithBases(&DstarDecoderSpec, bases);
     if (DstarDecoderType == NULL) return NULL;
@@ -61,12 +68,14 @@ PyInit_modules(void) {
     PyObject* MbeSynthesizerType = PyType_FromSpecWithBases(&MbeSynthesizerSpec, bases);
     if (MbeSynthesizerType == NULL) return NULL;
 
-    bases = PyTuple_Pack(1, getModuleType());
+    Py_INCREF(DecoderType);
+    bases = PyTuple_Pack(1, DecoderType);
     if (bases == NULL) return NULL;
     PyObject* NxdnDecoderType = PyType_FromSpecWithBases(&NxdnDecoderSpec, bases);
     if (NxdnDecoderType == NULL) return NULL;
 
-    bases = PyTuple_Pack(1, getModuleType());
+    Py_INCREF(DecoderType);
+    bases = PyTuple_Pack(1, DecoderType);
     if (bases == NULL) return NULL;
     PyObject* DmrDecoderType = PyType_FromSpecWithBases(&DmrDecoderSpec, bases);
     if (DmrDecoderType == NULL) return NULL;

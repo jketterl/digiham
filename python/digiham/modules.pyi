@@ -7,14 +7,6 @@ class DcBlock(Module):
         ...
 
 
-class DstarDecoder(Module):
-    def __init__(self):
-        ...
-
-    def setMetaWriter(self, metaWriter: Writer) -> None:
-        ...
-
-
 class FskDemodulator(Module):
     def __init__(self, samplesPerSymbol: int = 40, invert: bool = False):
         ...
@@ -40,19 +32,26 @@ class MbeSynthesizer(Module):
         ...
 
 
-class NxdnDecoder(Module):
-    def __init__(self):
-        ...
-
-    def setMetaWriter(self, metaWriter: Writer) -> None:
-        ...
-
-
 class GfskDemodulator(Module):
     def __init__(self, samplesPerSymbol: int = 10):
         ...
 
 
-class DmrDecoder(Module):
+class Decoder(Module):
+    def setMetaWriter(self, metaWriter: Writer) -> None:
+        ...
+
+
+class DstarDecoder(Decoder):
+    def __init__(self):
+        ...
+
+
+class NxdnDecoder(Decoder):
+    def __init__(self):
+        ...
+
+
+class DmrDecoder(Decoder):
     def __init__(self):
         ...
