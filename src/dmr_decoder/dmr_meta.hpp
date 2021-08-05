@@ -1,6 +1,7 @@
 #pragma once
 
 #include "meta.hpp"
+#include "lc.hpp"
 
 #include <map>
 #include <string>
@@ -11,6 +12,10 @@ namespace Digiham::Dmr {
     class Slot {
         public:
             void setSync(int sync);
+            void setType(int type);
+            void setSource(uint32_t source);
+            void setTarget(uint32_t target);
+            void setFromLc(Lc* lc);
             void reset();
             bool isDirty();
             void setClean();
@@ -18,8 +23,12 @@ namespace Digiham::Dmr {
         private:
             void setDirty();
             std::string getSyncName() const;
+            std::string getTypeName() const;
             bool dirty = false;
             int sync = -1;
+            int type = -1;
+            uint32_t source;
+            uint32_t target;
     };
 
     class MetaCollector: public Digiham::MetaCollector {

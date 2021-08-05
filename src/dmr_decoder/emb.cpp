@@ -14,3 +14,11 @@ Emb *Emb::parse(uint16_t data) {
 }
 
 Emb::Emb(uint16_t data): data(data) {}
+
+unsigned char Emb::getColorCode() {
+    return (data >> 12) & 0b1111;
+}
+
+unsigned char Emb::getLcss() {
+    return (data >> 9) & 0b11;
+}

@@ -10,6 +10,41 @@ void Slot::setSync(int sync) {
     this->setDirty();
 }
 
+void Slot::setType(int type) {
+    if (this->type == type) return;
+    this->type = type;
+    this->setDirty();
+}
+
+void Slot::setSource(uint32_t source) {
+    if (this->source == source) return;
+    this->source = source;
+    this->setDirty();
+}
+
+void Slot::setTarget(uint32_t target) {
+    if (this->target == target) return;
+    this->target = target;
+    this->setDirty();
+}
+
+void Slot::setFromLc(Lc *lc) {
+    switch (lc->getOpCode()) {
+        case LC_OPCODE_GROUP:
+            setType(META_TYPE_GROUP);
+            setTarget(lc->getTarget());
+            setSource(lc->getSource());
+            break;
+        case LC_OPCODE_UNIT_TO_UNIT:
+            setType(META_TYPE_DIRECT);
+            setTarget(lc->getTarget());
+            setSource(lc->getSource());
+            break;
+        default:
+            break;
+    }
+}
+
 bool Slot::isDirty() {
     return dirty;
 }
@@ -24,12 +59,24 @@ void Slot::setClean() {
 
 void Slot::reset() {
     setSync(-1);
+    setType(-1);
+    setSource(0);
+    setTarget(0);
 }
 
 std::map<std::string, std::string> Slot::collect() {
     std::map<std::string, std::string> result;
     if (sync > 0) {
         result["sync"] = getSyncName();
+    }
+    if (type > 0) {
+        result["type"] = getTypeName();
+    }
+    if (source > 0) {
+        result["source"] = std::to_string(source);
+    }
+    if (target > 0) {
+        result["target"] = std::to_string(target);
     }
     return result;
 }
@@ -38,6 +85,14 @@ std::string Slot::getSyncName() const {
     switch (sync) {
         case SYNCTYPE_DATA: return "data";
         case SYNCTYPE_VOICE: return "voice";
+        default: return "unknown";
+    }
+}
+
+std::string Slot::getTypeName() const {
+    switch (type) {
+        case META_TYPE_DIRECT: return "direct";
+        case META_TYPE_GROUP: return "group";
         default: return "unknown";
     }
 }

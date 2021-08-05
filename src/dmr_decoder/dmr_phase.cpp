@@ -41,13 +41,22 @@ Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writ
     return this;
 }
 
-FramePhase::FramePhase(): syncCount(0) {}
+FramePhase::FramePhase():
+    embCollectors { new EmbeddedCollector(), new EmbeddedCollector() }
+{}
+
+FramePhase::~FramePhase() noexcept {
+    delete embCollectors[0];
+    delete embCollectors[1];
+}
 
 int FramePhase::getRequiredData() {
     return FRAME_SIZE;
 }
 
 Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Writer<unsigned char> *output) {
+    Emb* emb;
+
     int syncType = getSyncType(data->getReadPointer() + syncOffset);
     if (syncType > 0) {
         // increase sync count, cap at 5
@@ -63,7 +72,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                 emb_data = (emb_data << 2) | raw[k];
             }
         }
-        Emb* emb = Emb::parse(emb_data);
+        emb = Emb::parse(emb_data);
         if (emb != nullptr) {
             // if the EMB decoded correctly, that counts towards the sync :)
             if (++syncCount > 5) syncCount = 5;
@@ -102,7 +111,46 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
     if (slot != -1) {
         if (syncType > 0) {
             syncTypes[slot] = syncType;
-            ((MetaCollector*) meta)->withSlot(slot, [syncType] (Slot* slot) { slot->setSync(syncType); });
+            ((MetaCollector*) meta)->withSlot(slot, [syncType] (Slot* s) {
+                s->setSync(syncType);
+                if (syncType == SYNCTYPE_DATA) {
+                    s->setType(-1);
+                    s->setSource(0);
+                    s->setTarget(0);
+                }
+            });
+        }
+
+        if (emb != nullptr) {
+            unsigned char embedded_data[4] = {0};
+            unsigned char* emb_raw = data->getReadPointer() + syncOffset + 4;
+            for (int i = 0; i < 16; i++) {
+                embedded_data[i / 4] |= emb_raw[i] << (6 - (i % 4) * 2);
+            }
+            auto collector = embCollectors[slot];
+            switch (emb->getLcss()) {
+                case LCSS_SINGLE:
+                    // RC data. no idea what to do with that yet.
+                    break;
+
+                case LCSS_START:
+                    collector->reset();
+                    // break intentionally omitted
+
+                case LCSS_CONTINUATION:
+                    collector->collect(embedded_data);
+                    break;
+
+                case LCSS_STOP:
+                    collector->collect(embedded_data);
+                    Lc* lc = collector->getLc();
+                    if (lc != nullptr) {
+                        ((MetaCollector*) meta)->withSlot(slot, [lc] (Slot* s) { s->setFromLc(lc); });
+                        delete lc;
+                    }
+                    collector->reset();
+                    break;
+            }
         }
 
         if (syncTypes[slot] == SYNCTYPE_VOICE) {
@@ -133,6 +181,8 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
         }
     }
 
+    delete cach;
+    delete emb;
 
     data->advance(FRAME_SIZE);
     return this;

@@ -1,7 +1,7 @@
-add_library(digiham_dmr_decoder OBJECT dmr_decoder.cpp dmr_phase.cpp dmr_meta.cpp emb.cpp quadratic_residue.c cach.cpp tact.cpp hamming_7_4.c)
+add_library(digiham_dmr_decoder OBJECT dmr_decoder.cpp dmr_phase.cpp dmr_meta.cpp emb.cpp quadratic_residue.c cach.cpp tact.cpp hamming_7_4.c embedded.cpp lc.cpp hamming_16_11.c)
 target_compile_options(digiham_dmr_decoder PRIVATE "-fPIC")
 
-add_executable(dmr_decoder dmr_decoder.c bptc_196_96.c golay_20_8.c hamming_13_9.c hamming_15_11.c hamming_16_11.c)
+add_executable(dmr_decoder dmr_decoder.c bptc_196_96.c golay_20_8.c hamming_13_9.c hamming_15_11.c)
 target_link_libraries(dmr_decoder digiham)
 install(TARGETS dmr_decoder DESTINATION ${CMAKE_INSTALL_BINDIR})
 

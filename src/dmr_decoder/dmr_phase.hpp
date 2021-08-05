@@ -1,6 +1,7 @@
 #pragma once
 
 #include "phase.hpp"
+#include "embedded.hpp"
 
 #define SYNC_SIZE 24
 
@@ -9,6 +10,9 @@
 
 #define SYNCTYPE_DATA 1
 #define SYNCTYPE_VOICE 2
+
+#define META_TYPE_DIRECT 1
+#define META_TYPE_GROUP 2
 
 namespace Digiham::Dmr {
 
@@ -36,13 +40,15 @@ namespace Digiham::Dmr {
     class FramePhase: public Phase {
         public:
             FramePhase();
+            ~FramePhase() override;
             int getRequiredData() override;
             Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
         private:
-            int syncCount;
+            int syncCount = 0;
             int slot = -1;
             int slotStability = 0;
             int syncTypes[2] = {-1, -1};
+            EmbeddedCollector* embCollectors[2];
             int activeSlot = -1;
             unsigned char slotFilter = 3;
     };
