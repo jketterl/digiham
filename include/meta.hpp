@@ -39,7 +39,8 @@ namespace Digiham {
         protected:
             virtual std::string getProtocol() = 0;
             virtual std::map<std::string, std::string> collect();
-            void sendMetaData();
+            virtual void sendMetaData();
+            virtual void sendMetaData(std::map<std::string, std::string> metadata);
             void hold();
             void release();
         private:

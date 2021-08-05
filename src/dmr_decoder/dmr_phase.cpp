@@ -1,5 +1,6 @@
 #include <cstring>
 #include "dmr_phase.hpp"
+#include "dmr_meta.hpp"
 #include "emb.hpp"
 #include "cach.hpp"
 
@@ -69,7 +70,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
         } else {
             // no sync and no EMB, decrease sync counter
             if (--syncCount < 0) {
-                //((MetaCollector*) meta)->reset();
+                ((MetaCollector*) meta)->reset();
                 return new SyncPhase();
             }
         }
@@ -99,7 +100,10 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
     }
 
     if (slot != -1) {
-        if (syncType > 0) syncTypes[slot] = syncType;
+        if (syncType > 0) {
+            syncTypes[slot] = syncType;
+            ((MetaCollector*) meta)->withSlot(slot, [syncType] (Slot* slot) { slot->setSync(syncType); });
+        }
 
         if (syncTypes[slot] == SYNCTYPE_VOICE) {
             // don't output anything if the slot is muted

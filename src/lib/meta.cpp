@@ -1,6 +1,7 @@
 #include "meta.hpp"
 #include <sstream>
 #include <cstring>
+#include <utility>
 
 using namespace Digiham;
 
@@ -11,6 +12,7 @@ std::string MetaWriter::serializeMetaData(std::map<std::string, std::string> met
         ss << it->first << ":" << it->second;
     }
     ss << "\n";
+
     return ss.str();
 }
 
@@ -60,8 +62,12 @@ std::map<std::string, std::string> MetaCollector::collect() {
     return std::map<std::string, std::string> { {"protocol", getProtocol()} };
 }
 
+void MetaCollector::sendMetaData(std::map<std::string, std::string> metadata) {
+    writer->sendMetaData(std::move(metadata));
+}
+
 
 void MetaCollector::sendMetaData() {
     if (writer == nullptr || held) return;
-    writer->sendMetaData(collect());
+    sendMetaData(collect());
 }
