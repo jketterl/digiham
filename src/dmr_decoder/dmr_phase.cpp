@@ -62,7 +62,7 @@ int FramePhase::getRequiredData() {
 }
 
 Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Writer<unsigned char> *output) {
-    Emb* emb;
+    Emb* emb = nullptr;
 
     int syncType = getSyncType(data->getReadPointer() + syncOffset);
     if (syncType > 0) {
