@@ -97,8 +97,9 @@ std::string TalkerAliasCollector::getContents() {
     }
 
     if (result.length() > getLength()) {
-        return result.substr(0, getLength());
+        result = result.substr(0, getLength());
     }
+
     return result;
 }
 

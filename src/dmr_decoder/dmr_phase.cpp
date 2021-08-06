@@ -159,8 +159,13 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
             }
 
             if (talkerAliasCollector[slot]->isComplete()) {
-                ((MetaCollector*) meta)->withSlot(slot, [this] (Slot* s) {
-                    s->setTalkerAlias(talkerAliasCollector[slot]->getContents());
+                std::string alias = talkerAliasCollector[slot]->getContents();
+                // trim off any 0-chars (YSF bridging does this)
+                auto end = alias.find_last_not_of('\0');
+                alias = end == std::string::npos ? "" : alias.substr(0, end + 1);
+
+                ((MetaCollector*) meta)->withSlot(slot, [alias] (Slot* s) {
+                    s->setTalkerAlias(alias);
                 });
             }
         }
