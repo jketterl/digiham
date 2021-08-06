@@ -45,6 +45,7 @@ namespace Digiham::Dmr {
             ~FramePhase() override;
             int getRequiredData() override;
             Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
+            void setSlotFilter(unsigned char filter);
         private:
             void handleLc(Lc* lc);
             int syncCount = 0;

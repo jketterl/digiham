@@ -289,3 +289,9 @@ void FramePhase::handleLc(Lc *lc) {
             break;
     }
 }
+
+void FramePhase::setSlotFilter(unsigned char filter) {
+    slotFilter = filter;
+    // if the new filter mutes the active slot -> reset active slot
+    if (((activeSlot + 1) & slotFilter) == 0) activeSlot = -1;
+}

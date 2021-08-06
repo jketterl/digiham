@@ -21,10 +21,11 @@ namespace Digiham {
             bool canProcess() override;
             void process() override;
             void setMetaWriter(MetaWriter* meta);
-        private:
-            void setPhase(Phase* phase);
-            MetaCollector* metaCollector;
+        protected:
             Phase* currentPhase;
+            virtual void setPhase(Phase* phase);
+        private:
+            MetaCollector* metaCollector;
     };
 
 }

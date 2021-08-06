@@ -55,3 +55,6 @@ class NxdnDecoder(Decoder):
 class DmrDecoder(Decoder):
     def __init__(self):
         ...
+
+    def setSlotFilter(self, filter: int) -> None:
+        ...

@@ -12,8 +12,36 @@ static int DmrDecoder_init(DmrDecoder* self, PyObject* args, PyObject* kwds) {
     return 0;
 }
 
+static PyObject* DmrDecoder_setSlotFilter(DmrDecoder* self, PyObject* args, PyObject* kwds) {
+    static char* kwlist[] = {(char*) "filter", NULL};
+
+    unsigned char filter;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "b", kwlist, &filter)) {
+        return NULL;
+    }
+
+    // unsigned char cannot be < 0 without overflowing, so no need to check that
+    if (filter > 3) {
+        PyErr_SetString(PyExc_ValueError, "filter must be 0 <= filter <= 3");
+        return NULL;
+    }
+
+    dynamic_cast<Digiham::Dmr::Decoder*>(self->module)->setSlotFilter(filter);
+
+    Py_RETURN_NONE;
+}
+
+static PyMethodDef DmrDecoder_methods[] = {
+    {"setSlotFilter", (PyCFunction) DmrDecoder_setSlotFilter, METH_VARARGS | METH_KEYWORDS,
+     "set TDMA timeslot filter"
+    },
+    {NULL}  /* Sentinel */
+};
+
+
 static PyType_Slot DmrDecoderSlots[] = {
     {Py_tp_init, (void*) DmrDecoder_init},
+    {Py_tp_methods, DmrDecoder_methods},
     {0, 0}
 };
 
