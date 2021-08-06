@@ -13,17 +13,18 @@ namespace Digiham::Dmr {
         public:
             TalkerAliasCollector();
             ~TalkerAliasCollector();
-            void setHeader(unsigned char* data);
             void setBlock(int block, unsigned char* data);
             void reset();
             bool isComplete();
             std::string getContents();
         private:
+            bool hasHeader();
+            unsigned char getDataFormat();
+            unsigned char getLength();
+            unsigned char collectedBytes() const;
+            std::string convert7BitData(unsigned char* start);
             unsigned char* data;
-            bool headerSeen = false;
             unsigned int blocks = 0;
-            unsigned char dataFormat;
-            unsigned char length;
     };
 
 }

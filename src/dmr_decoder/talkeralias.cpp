@@ -3,15 +3,14 @@
 #include <algorithm>
 #include <codecvt>
 #include <locale>
+#include <cassert>
+#include <sstream>
 #include "talkeralias.hpp"
-
-#include <iostream>
-
 
 using namespace Digiham::Dmr;
 
 TalkerAliasCollector::TalkerAliasCollector():
-    data((unsigned char*) malloc(sizeof(unsigned char) * 32))
+    data((unsigned char*) malloc(sizeof(unsigned char) * 28))
 {}
 
 TalkerAliasCollector::~TalkerAliasCollector() {
@@ -19,90 +18,121 @@ TalkerAliasCollector::~TalkerAliasCollector() {
 }
 
 void TalkerAliasCollector::reset() {
-    if (headerSeen) std::cerr << "talkeralias reset\n";
-    headerSeen = false;
     blocks = 0;
 }
 
 bool TalkerAliasCollector::isComplete() {
-    if (!headerSeen) {
+    // cannot be complete without the header, and we cannot evaluate any data until we have that.
+    if (!hasHeader()) {
         return false;
     }
 
-    if (dataFormat == TALKER_ALIAS_FORMAT_7BIT) {
-        // unhandled
-        return false;
-    } else {
-        std::string result = getContents();
-        //std::cerr << "prelim talker alias: " << result << "; we have: " << result.length() << "; we want: " << +length << "\n";
-        if (result.length() >= length) return true;
+    unsigned char bytes = collectedBytes();
+
+    switch (getDataFormat()) {
+        case TALKER_ALIAS_FORMAT_7BIT:
+            return ((bytes * 7) / 8) - 1 >= getLength();
+        case TALKER_ALIAS_FORMAT_8BIT:
+            // first byte unusable
+            return bytes - 1 >= getLength();
+        case TALKER_ALIAS_FORMAT_UTF8: {
+            // we don't know until we try
+            std::string content = getContents();
+            return content.length() >= getLength();
+        }
+        case TALKER_ALIAS_FORMAT_UTF16:
+            // first byte unusable
+            return (bytes - 1) / 2 >= getLength();
     }
+
+    // if we get to here, something went wrong anyway
     return false;
 }
 
-void TalkerAliasCollector::setHeader(unsigned char *data) {
-    dataFormat = data[0] >> 6;
-    length = (data[0] & 0b00111110) >> 1;
-
-    std::cerr << "talker alias format: " << +dataFormat << "; length: " << +length << "\n";
-
-    if (dataFormat == TALKER_ALIAS_FORMAT_7BIT) {
-        // unhandled
-    } else {
-        std::memcpy(this->data, data + 1, 6);
-    }
-
-    headerSeen = true;
-}
-
 void TalkerAliasCollector::setBlock(int block, unsigned char *data) {
-    if (!headerSeen) return;
-    std::cerr << "received talker alias block " << block << "\n";
-    if (dataFormat == TALKER_ALIAS_FORMAT_7BIT) {
-        // unhandled
-    } else {
-        size_t offset = 6 + block * 7;
-        std::memcpy(this->data + offset, data, 7);
-    }
+    assert(block < 4);
+    size_t offset = (size_t) block * 7;
+    std::memcpy(this->data + offset, data, 7);
 
     blocks |= 1 << block;
 }
 
 std::string TalkerAliasCollector::getContents() {
-    if (!headerSeen) {
+    // cannot evaluate the data without a header
+    if (!hasHeader()) {
         return "";
     }
 
-    std::string result = "";
-    if (dataFormat == TALKER_ALIAS_FORMAT_7BIT) {
-        // unhandled
-        return "";
-    } else if (dataFormat == TALKER_ALIAS_FORMAT_UTF16) {
-        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
-        for (int i = 0; i < 4; i++) {
-            unsigned char mask = (1 << i) - 1;
-            // check if the required blocks are there
-            if ((blocks & mask) != mask) break;
+    unsigned char bytes = collectedBytes();
+    std::string result;
+
+    switch (getDataFormat()) {
+        case TALKER_ALIAS_FORMAT_7BIT: {
+            std::stringstream ss;
+            for (size_t i = 0; i < bytes; i += 7) {
+                ss << convert7BitData(data + i);
+            }
+            // first character is trash because it was built using the header bits
+            result = ss.str().substr(1);
+            break;
+        }
+        case TALKER_ALIAS_FORMAT_8BIT:
+        case TALKER_ALIAS_FORMAT_UTF8:
+            // first byte unusable
+            result = std::string((char*) data + 1, bytes - 1);
+            break;
+        case TALKER_ALIAS_FORMAT_UTF16:
+            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
+            // first byte unusable
+            unsigned int chars = (bytes - 1) / 2;
+            auto src = data + 1;
             // manual endianness conversion because i couldn't find a better way
-            unsigned int chars = (6 + i * 7) / 2;
             auto econv = (char16_t*) malloc(chars * sizeof(char16_t));
             for (int k = 0; k < chars; k++) {
-                econv[k] = (data[k * 2] << 8) | data[k * 2 + 1];
+                econv[k] = (src[k * 2] << 8) | src[k * 2 + 1];
             }
             std::u16string s(econv, chars);
             result = converter.to_bytes(s);
             free(econv);
-        }
-    } else {
-        for (int i = 0; i < 4; i++) {
-            unsigned char mask = (1 << i) - 1;
-            // check if the required blocks are there
-            if ((blocks & mask) != mask) break;
-            result = std::string((char*)data, 6 + i * 7);
-        }
     }
-    if (result.length() > length) {
-        return result.substr(0, length);
+
+    if (result.length() > getLength()) {
+        return result.substr(0, getLength());
     }
     return result;
+}
+
+bool TalkerAliasCollector::hasHeader() {
+    return blocks & 1;
+}
+
+unsigned char TalkerAliasCollector::getDataFormat() {
+    return data[0] >> 6;
+}
+
+unsigned char TalkerAliasCollector::getLength() {
+    return (data[0] & 0b00111110) >> 1;
+}
+
+unsigned char TalkerAliasCollector::collectedBytes() const {
+    int i;
+    for (i = 0; i < 4; i++) {
+        unsigned char mask = (1 << (i + 1)) - 1;
+        // check if the required blocks are there
+        if ((blocks & mask) != mask) break;
+    }
+    return i * 7;
+}
+
+std::string TalkerAliasCollector::convert7BitData(unsigned char *start) {
+    unsigned char res[8] = { 0 };
+    res[0] = (start[0] & 0b11111110) >> 1;
+    res[1] = (start[0] & 0b00000001) << 6 | (start[1] & 0b11111100) >> 2;
+    res[2] = (start[1] & 0b00000011) << 5 | (start[2] & 0b11111000) >> 3;
+    res[3] = (start[2] & 0b00000111) << 4 | (start[3] & 0b11110000) >> 4;
+    res[4] = (start[3] & 0b00001111) << 3 | (start[4] & 0b11100000) >> 5;
+    res[5] = (start[4] & 0b00011111) << 2 | (start[5] & 0b11000000) >> 6;
+    res[6] = (start[5] & 0b00111111) << 1 | (start[6] & 0b10000000) >> 7;
+    res[7] = start[6] & 0b01111111;
+    return std::string((char*) res, 8);
 }

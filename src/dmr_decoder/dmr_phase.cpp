@@ -268,12 +268,11 @@ void FramePhase::handleLc(Lc *lc) {
             ((MetaCollector*) meta)->withSlot(slot, [lc] (Slot* s) { s->setFromLc(lc); });
             break;
         case LC_TALKER_ALIAS_HDR:
-            talkerAliasCollector[slot]->setHeader(lc->getData());
-            break;
         case LC_TALKER_ALIAS_BLK1:
         case LC_TALKER_ALIAS_BLK2:
         case LC_TALKER_ALIAS_BLK3:
-            talkerAliasCollector[slot]->setBlock(opcode - LC_TALKER_ALIAS_BLK1, lc->getData());
+            // the actual opcodes are numbered consecutively, so this math makes sense
+            talkerAliasCollector[slot]->setBlock(opcode - LC_TALKER_ALIAS_HDR, lc->getData());
             break;
         default:
             std::cerr << "unknown opcode: " << +opcode << "\n";
