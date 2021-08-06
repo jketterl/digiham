@@ -20,7 +20,8 @@ namespace Digiham::Dmr {
             std::string getContents();
         private:
             unsigned char* data;
-            unsigned char checked = 0;
+            bool headerSeen = false;
+            unsigned int blocks = 0;
             unsigned char dataFormat;
             unsigned char length;
     };

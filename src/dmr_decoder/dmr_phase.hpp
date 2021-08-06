@@ -5,6 +5,7 @@
 #include "talkeralias.hpp"
 
 #define SYNC_SIZE 24
+#define CACH_SIZE 12
 
 // full frame including CACH, SYNC and the two payload blocks
 #define FRAME_SIZE 144
@@ -29,7 +30,7 @@ namespace Digiham::Dmr {
             // in DMR frames, the sync is in the middle. therefor, we need to be able to look at previous data once we
             // find a sync.
             // The data of one channel is 54 symbols, and the length of the CACH in basestation transmissions is 12.
-            unsigned int syncOffset = 54 + 12;
+            unsigned int syncOffset = 54 + CACH_SIZE;
     };
 
     class SyncPhase: public Phase {
@@ -45,6 +46,7 @@ namespace Digiham::Dmr {
             int getRequiredData() override;
             Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
         private:
+            void handleLc(Lc* lc);
             int syncCount = 0;
             int slot = -1;
             int slotStability = 0;

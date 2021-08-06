@@ -85,9 +85,10 @@ Lc *EmbeddedCollector::getLc() {
 
     if (checksum_mod != received_checksum) {
         // checksum error
-        free(lc);
         return nullptr;
     }
 
-    return new Lc(lc);
+    Lc* result = new Lc(lc);
+    free(lc);
+    return result;
 }

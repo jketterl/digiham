@@ -7,25 +7,25 @@ using namespace Digiham::Dmr;
 void Slot::setSync(int sync) {
     if (this->sync == sync) return;
     this->sync = sync;
-    this->setDirty();
+    setDirty();
 }
 
 void Slot::setType(int type) {
     if (this->type == type) return;
     this->type = type;
-    this->setDirty();
+    setDirty();
 }
 
 void Slot::setSource(uint32_t source) {
     if (this->source == source) return;
     this->source = source;
-    this->setDirty();
+    setDirty();
 }
 
 void Slot::setTarget(uint32_t target) {
     if (this->target == target) return;
     this->target = target;
-    this->setDirty();
+    setDirty();
 }
 
 void Slot::setFromLc(Lc *lc) {
@@ -43,6 +43,12 @@ void Slot::setFromLc(Lc *lc) {
     setSource(lc->getSource());
 }
 
+void Slot::setTalkerAlias(std::string alias) {
+    if (talkerAlias == alias) return;
+    talkerAlias = alias;
+    setDirty();
+}
+
 bool Slot::isDirty() {
     return dirty;
 }
@@ -55,11 +61,16 @@ void Slot::setClean() {
     dirty = false;
 }
 
-void Slot::reset() {
-    setSync(-1);
+void Slot::softReset() {
     setType(-1);
     setSource(0);
     setTarget(0);
+    setTalkerAlias("");
+}
+
+void Slot::reset() {
+    softReset();
+    setSync(-1);
 }
 
 std::map<std::string, std::string> Slot::collect() {
@@ -75,6 +86,9 @@ std::map<std::string, std::string> Slot::collect() {
     }
     if (target > 0) {
         result["target"] = std::to_string(target);
+    }
+    if (!talkerAlias.empty()) {
+        result["talkeralias"] = talkerAlias;
     }
     return result;
 }

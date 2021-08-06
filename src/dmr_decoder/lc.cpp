@@ -1,10 +1,15 @@
 #include "lc.hpp"
 
 #include <malloc.h>
+#include <cstring>
 
 using namespace Digiham::Dmr;
 
-Lc::Lc(unsigned char* data): data(data) {}
+Lc::Lc(unsigned char* data):
+    data((unsigned char*) malloc(sizeof(unsigned char) * 9))
+{
+    std::memcpy(this->data, data, 9);
+}
 
 Lc::~Lc() {
     free(data);

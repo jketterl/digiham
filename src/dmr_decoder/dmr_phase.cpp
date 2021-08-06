@@ -3,9 +3,11 @@
 #include "dmr_meta.hpp"
 #include "emb.hpp"
 #include "cach.hpp"
+#include "slottype.hpp"
 
 extern "C" {
 #include "hamming_distance.h"
+#include "bptc_196_96.h"
 }
 
 #include <iostream>
@@ -119,9 +121,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
             ((MetaCollector*) meta)->withSlot(slot, [syncType] (Slot* s) {
                 s->setSync(syncType);
                 if (syncType == SYNCTYPE_DATA) {
-                    s->setType(-1);
-                    s->setSource(0);
-                    s->setTarget(0);
+                    s->softReset();
                 }
             });
         }
@@ -146,36 +146,22 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                     collector->collect(embedded_data);
                     break;
 
-                case LCSS_STOP:
+                case LCSS_STOP: {
                     collector->collect(embedded_data);
                     Lc* lc = collector->getLc();
                     if (lc != nullptr) {
-                        unsigned char opcode = lc->getOpCode();
-                        switch (lc->getOpCode()) {
-                            case LC_OPCODE_GROUP:
-                            case LC_OPCODE_UNIT_TO_UNIT:
-                                ((MetaCollector*) meta)->withSlot(slot, [lc] (Slot* s) { s->setFromLc(lc); });
-                                break;
-                            case LC_TALKER_ALIAS_HDR:
-                                talkerAliasCollector[slot]->setHeader(lc->getData());
-                                break;
-                            case LC_TALKER_ALIAS_BLK1:
-                            case LC_TALKER_ALIAS_BLK2:
-                            case LC_TALKER_ALIAS_BLK3:
-                                talkerAliasCollector[slot]->setBlock(lc->getOpCode() - LC_TALKER_ALIAS_BLK1, lc->getData());
-                                break;
-                            default:
-                                std::cerr << "unknown opcode: " << +lc->getOpCode() << "\n";
-                                break;
-                        }
+                        handleLc(lc);
                         delete lc;
                     }
                     collector->reset();
                     break;
+                }
             }
 
             if (talkerAliasCollector[slot]->isComplete()) {
-                std::cerr << "talker alias: " << talkerAliasCollector[slot]->getContents() << "\n";
+                ((MetaCollector*) meta)->withSlot(slot, [this] (Slot* s) {
+                    s->setTalkerAlias(talkerAliasCollector[slot]->getContents());
+                });
             }
         }
 
@@ -188,7 +174,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                 unsigned char* payload = output->getWritePointer();
                 std::memset(payload, 0, 27);
                 // first half
-                unsigned char* payloadRaw = data->getReadPointer() + 12;
+                unsigned char* payloadRaw = data->getReadPointer() + CACH_SIZE;
                 for (int i = 0; i < 54; i++) {
                     payload[i / 4] |= (payloadRaw[i] & 3) << (6 - 2 * (i % 4));
                 }
@@ -205,8 +191,65 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                 activeSlot = -1;
             }
 
-            embCollectors[slot]->reset();
             talkerAliasCollector[slot]->reset();
+
+            if (syncTypes[slot] == SYNCTYPE_DATA) {
+                uint32_t slot_type = 0;
+                unsigned char* slot_type_raw = data->getReadPointer() + syncOffset - 5;
+                for (int i = 0; i < 5; i++) {
+                    slot_type = (slot_type << 2) | (slot_type_raw[i] & 3);
+                }
+
+                slot_type_raw = data->getReadPointer() + syncOffset + SYNC_SIZE;
+                for (int i = 0; i < 5; i++) {
+                    slot_type = (slot_type << 2) | (slot_type_raw[i] & 3);
+                }
+
+                SlotType* slotType = SlotType::parse(slot_type);
+                if (slotType != nullptr) {
+                    uint8_t data_type = slotType->getDataType();
+
+                    // according to ETSI 6.2, rate 3/4 data is the only kind of data that doesn't use the BPTC(196,96) FEC
+                    if (data_type == DATA_TYPE_RATE_3_4_DATA) {
+                        // not decoded
+                    } else {
+                        // extract payload data
+                        uint8_t payload[25] = { 0 };
+                        // first half
+                        unsigned char* payloadRaw = data->getReadPointer() + CACH_SIZE;
+                        for (int k = 0; k < 49; k++) {
+                            payload[k / 4] |= (payloadRaw[k] & 3) << (6 - 2 * (k % 4));
+                        }
+
+                        // second half
+                        payloadRaw = data->getReadPointer() + syncOffset + SYNC_SIZE;
+                        for (int k = 0; k < 49; k++) {
+                            payload[(k + 49) / 4] |= (payloadRaw[3] & 3) << (6 - 2 * ((k + 49) % 4));
+                        }
+
+                        uint8_t lc_data[12] = { 0 };
+                        if (bptc_196_96(payload, lc_data)) {
+                            if (data_type == DATA_TYPE_VOICE_LC) {
+                                Lc* lc = new Lc((unsigned char*) lc_data);
+                                std::cerr << "lc data from voice lc: opcode: " << +lc->getOpCode() << "; source: " << lc->getSource() << "; target: " << lc->getTarget() << "\n";
+                                handleLc(lc);
+                                delete lc;
+                            } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
+                                ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) {
+                                    s->softReset();
+                                });
+                            //} else if (data_type == DATA_TYPE_DATA_HEADER || data_type == DATA_TYPE_RATE_1_2_DATA) {
+                                // not implemented
+                            //} else {
+                                // unsupported
+                            }
+                        }
+
+                    }
+
+                    delete slotType;
+                }
+            }
         }
     }
 
@@ -215,4 +258,25 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
 
     data->advance(FRAME_SIZE);
     return this;
+}
+
+void FramePhase::handleLc(Lc *lc) {
+    unsigned char opcode = lc->getOpCode();
+    switch (opcode) {
+        case LC_OPCODE_GROUP:
+        case LC_OPCODE_UNIT_TO_UNIT:
+            ((MetaCollector*) meta)->withSlot(slot, [lc] (Slot* s) { s->setFromLc(lc); });
+            break;
+        case LC_TALKER_ALIAS_HDR:
+            talkerAliasCollector[slot]->setHeader(lc->getData());
+            break;
+        case LC_TALKER_ALIAS_BLK1:
+        case LC_TALKER_ALIAS_BLK2:
+        case LC_TALKER_ALIAS_BLK3:
+            talkerAliasCollector[slot]->setBlock(opcode - LC_TALKER_ALIAS_BLK1, lc->getData());
+            break;
+        default:
+            std::cerr << "unknown opcode: " << +opcode << "\n";
+            break;
+    }
 }

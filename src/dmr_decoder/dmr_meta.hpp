@@ -16,7 +16,9 @@ namespace Digiham::Dmr {
             void setSource(uint32_t source);
             void setTarget(uint32_t target);
             void setFromLc(Lc* lc);
+            void setTalkerAlias(std::string alias);
             void reset();
+            void softReset();
             bool isDirty();
             void setClean();
             std::map<std::string, std::string> collect();
@@ -29,6 +31,7 @@ namespace Digiham::Dmr {
             int type = -1;
             uint32_t source;
             uint32_t target;
+            std::string talkerAlias;
     };
 
     class MetaCollector: public Digiham::MetaCollector {
