@@ -15,9 +15,11 @@ namespace Digiham::Dmr {
 
     class Lc {
         public:
+            static Lc* parseFromVoiceHeader(unsigned char* data);
             explicit Lc(unsigned char* data);
             ~Lc();
             unsigned char getOpCode();
+            unsigned char getFeatureSetId();
             uint32_t getSource();
             uint32_t getTarget();
             unsigned char* getData();

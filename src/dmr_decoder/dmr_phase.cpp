@@ -117,12 +117,12 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
 
     if (slot != -1) {
         if (syncType > 0) {
+            // trigger a softreset only when we are dropping out of voice
+            bool softReset = syncTypes[slot] == SYNCTYPE_VOICE && syncType != syncTypes[slot];
             syncTypes[slot] = syncType;
-            ((MetaCollector*) meta)->withSlot(slot, [syncType] (Slot* s) {
+            ((MetaCollector*) meta)->withSlot(slot, [syncType, softReset] (Slot* s) {
                 s->setSync(syncType);
-                if (syncType == SYNCTYPE_DATA) {
-                    s->softReset();
-                }
+                if (softReset) s->softReset();
             });
         }
 
@@ -217,23 +217,26 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                         uint8_t payload[25] = { 0 };
                         // first half
                         unsigned char* payloadRaw = data->getReadPointer() + CACH_SIZE;
+                        // 54 - 5 = 49 // compensate for the slot type PDU
                         for (int k = 0; k < 49; k++) {
                             payload[k / 4] |= (payloadRaw[k] & 3) << (6 - 2 * (k % 4));
                         }
 
                         // second half
-                        payloadRaw = data->getReadPointer() + syncOffset + SYNC_SIZE;
+                        // +5 again for the slot type PDU
+                        payloadRaw += 54 + SYNC_SIZE + 5;
                         for (int k = 0; k < 49; k++) {
-                            payload[(k + 49) / 4] |= (payloadRaw[3] & 3) << (6 - 2 * ((k + 49) % 4));
+                            payload[(k + 49) / 4] |= (payloadRaw[k] & 3) << (6 - 2 * ((k + 49) % 4));
                         }
 
                         uint8_t lc_data[12] = { 0 };
                         if (bptc_196_96(payload, lc_data)) {
                             if (data_type == DATA_TYPE_VOICE_LC) {
-                                Lc* lc = new Lc((unsigned char*) lc_data);
-                                std::cerr << "lc data from voice lc: opcode: " << +lc->getOpCode() << "; source: " << lc->getSource() << "; target: " << lc->getTarget() << "\n";
-                                handleLc(lc);
-                                delete lc;
+                                Lc* lc = Lc::parseFromVoiceHeader(lc_data);
+                                if (lc != nullptr) {
+                                    handleLc(lc);
+                                    delete lc;
+                                }
                             } else if (data_type == DATA_TYPE_TERMINATOR_LC || data_type == DATA_TYPE_IDLE) {
                                 ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) {
                                     s->softReset();
@@ -249,6 +252,8 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
 
                     delete slotType;
                 }
+            } else {
+                ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) { s->reset(); });
             }
         }
     }
@@ -275,7 +280,7 @@ void FramePhase::handleLc(Lc *lc) {
             talkerAliasCollector[slot]->setBlock(opcode - LC_TALKER_ALIAS_HDR, lc->getData());
             break;
         default:
-            std::cerr << "unknown opcode: " << +opcode << "\n";
+            std::cerr << "unknown opcode: " << +opcode << " from feature set id: " << +lc->getFeatureSetId() << "\n";
             break;
     }
 }
