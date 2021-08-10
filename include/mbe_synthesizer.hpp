@@ -5,6 +5,7 @@
 #include <codecserver/proto/framing.pb.h>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include "ambe_modes.hpp"
 
 namespace Digiham {
@@ -28,13 +29,19 @@ namespace Digiham {
                 void init();
                 void handshake();
                 void readLoop();
+                void setDynamicMode(Mode* mode);
+                void waitForResponse();
                 Mode* mode;
+                bool dynamicMode = false;
+                Mode* currentMode = nullptr;
                 int sock;
                 CodecServer::Connection* connection = nullptr;
                 CodecServer::proto::FramingHint framing;
                 std::thread* readerThread = nullptr;
                 bool run = true;
                 std::mutex receiveMutex;
+                std::condition_variable framingCV;
+                std::mutex framingMutex;
         };
 
     }

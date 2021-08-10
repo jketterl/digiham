@@ -4,6 +4,6 @@
 #include <Python.h>
 #include "decoder.hpp"
 
-struct DstarDecoder: Decoder {};
+struct YsfDecoder: Decoder {};
 
-extern PyType_Spec DstarDecoderSpec;
+extern PyType_Spec YsfDecoderSpec;

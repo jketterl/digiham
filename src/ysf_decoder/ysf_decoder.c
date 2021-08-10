@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
 
         while (!sync && ringbuffer_bytes() > SYNC_SIZE) {
             //fprintf(stderr, "ringbuffer_write_pos = %i; scanning ringbuffer at %i\n", ringbuffer_write_pos, i);
-            if (ringbuffer_read_pos >= RINGBUFFER_SIZE) i = 0;
+            if (ringbuffer_read_pos >= RINGBUFFER_SIZE) ringbuffer_read_pos = 0;
 
             uint8_t potential_sync[SYNC_SIZE];
 
@@ -449,7 +449,7 @@ int main(int argc, char** argv) {
                                 if (fn > 5 && fn <= 7) {
                                     // ensure sequence
                                     if (last_frame + 1 == fn) {
-                                        last_frame = current_fich -> frame_number;
+                                        last_frame = fn;
                                         memcpy(&dch_buffer[(fn - 6) * 10], &dch[0], 10);
                                     } else {
                                         last_frame = 5;

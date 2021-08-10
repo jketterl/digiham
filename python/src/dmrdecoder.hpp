@@ -2,11 +2,8 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <pycsdr/module.hpp>
-#include <pycsdr/writer.hpp>
+#include "decoder.hpp"
 
-struct DmrDecoder: Module {
-    Writer* metaWriter;
-};
+struct DmrDecoder: Decoder {};
 
 extern PyType_Spec DmrDecoderSpec;

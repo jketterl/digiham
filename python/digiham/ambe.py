@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
 class Mode:
@@ -21,19 +21,18 @@ class ControlWordMode(Mode):
         return self.cwds
 
 
-class DynamicMode(ABC):
+class DynamicMode(Mode, metaclass=ABCMeta):
     @abstractmethod
     def getModeFor(self, code: int):
         pass
 
 
-class YsfMode(DynamicMode, TableMode):
+class YsfMode(DynamicMode):
     def __init__(self):
-        super().__init__(34)
         self.modeTable = {
             0: TableMode(33),
-            1: TableMode(34),
-            2: ControlWordMode(b'\x05\x58\x08\x6b\x10\x30\x00\x00\x00\x00\x01\x90')
+            2: TableMode(34),
+            3: ControlWordMode(b'\x05\x58\x08\x6b\x10\x30\x00\x00\x00\x00\x01\x90')
         }
 
     def getModeFor(self, code: int):

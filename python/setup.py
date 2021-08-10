@@ -32,6 +32,7 @@ setup(
                 "src/nxdndecoder.cpp",
                 "src/gfskdemodulator.cpp",
                 "src/dmrdecoder.cpp",
+                "src/ysfdecoder.cpp",
             ],
             language="c++",
             include_dirs=[

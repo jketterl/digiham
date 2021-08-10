@@ -14,6 +14,10 @@ using namespace CodecServer::proto;
 MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode):
     mode(mode)
 {
+    if (dynamic_cast<DynamicMode*>(mode)) {
+        dynamicMode = true;
+    }
+
     // IPv6 / IPv4 socket
     struct addrinfo hints;
     struct addrinfo* result;
@@ -129,9 +133,16 @@ void MbeSynthesizer::handshake() {
     settings->mutable_directions()->Add(Settings_Direction_DECODE);
     TableMode* tmode;
     ControlWordMode* cmode;
-    if ((tmode = dynamic_cast<TableMode*>(mode))) {
+    DynamicMode* dmode;
+
+    currentMode = mode;
+    if ((dmode = dynamic_cast<DynamicMode*>(mode))) {
+        currentMode = dmode->getModeFor(0);
+    }
+
+    if ((tmode = dynamic_cast<TableMode*>(currentMode))) {
         (*settings->mutable_args())["index"] = std::to_string(tmode->getIndex());
-    } else if ((cmode = dynamic_cast<ControlWordMode*>(mode))) {
+    } else if ((cmode = dynamic_cast<ControlWordMode*>(currentMode))) {
         (*settings->mutable_args())["ratep"] = cmode->getCwdsAsString();
     }
     connection->sendMessage(&request);
@@ -166,6 +177,14 @@ bool MbeSynthesizer::canProcess() {
 }
 
 void MbeSynthesizer::process() {
+    if (dynamicMode) {
+        auto code = *(reader->getReadPointer());
+        reader->advance(1);
+        auto newMode = ((DynamicMode*) mode)->getModeFor(code);
+        if (newMode != nullptr) {
+            setDynamicMode(newMode);
+        }
+    }
     unsigned int bytes = framing.channelbytes();
     connection->sendChannelData((char*) reader->getReadPointer(), bytes);
     reader->advance(bytes);
@@ -222,6 +241,9 @@ void MbeSynthesizer::readLoop() {
                         framing = response->framing();
                     }
                     delete response;
+
+                    std::unique_lock<std::mutex> lk(framingMutex);
+                    framingCV.notify_all();
                 } else {
                     std::cerr << "received unexpected message type\n";
                 }
@@ -230,4 +252,38 @@ void MbeSynthesizer::readLoop() {
             // no data, just timeout.
         }
     }
+}
+
+void MbeSynthesizer::setDynamicMode(Mode *mode) {
+    if (currentMode == mode) {
+        return;
+    }
+
+    if (*currentMode == *mode) {
+        delete mode;
+        return;
+    }
+
+    Renegotiation reneg;
+    Settings* settings = reneg.mutable_settings();
+    settings->clear_directions();
+    settings->mutable_directions()->Add(Settings_Direction_DECODE);
+    google::protobuf::Map<std::string, std::string>* args = settings->mutable_args();
+    TableMode* tmode;
+    ControlWordMode* cmode;
+    if ((tmode = dynamic_cast<TableMode*>(mode))) {
+        (*settings->mutable_args())["index"] = std::to_string(tmode->getIndex());
+    } else if ((cmode = dynamic_cast<ControlWordMode*>(mode))) {
+        (*settings->mutable_args())["ratep"] = cmode->getCwdsAsString();
+    }
+    connection->sendMessage(&reneg);
+    waitForResponse();
+    auto old = currentMode;
+    currentMode = mode;
+    delete old;
+}
+
+void MbeSynthesizer::waitForResponse() {
+    std::unique_lock<std::mutex> lk(framingMutex);
+    framingCV.wait(lk);
 }

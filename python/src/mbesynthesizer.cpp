@@ -4,6 +4,85 @@
 #include <cstring>
 #include <digiham/mbe_synthesizer.hpp>
 
+static Digiham::Mbe::Mode* convertToAmbeMode(PyObject* mode) {
+    PyTypeObject* TableModeType = getAmbeTableModeType();
+    int rc = PyObject_IsInstance(mode, (PyObject*) TableModeType);
+    Py_DECREF(TableModeType);
+
+    if (rc == -1) return nullptr;
+    if (rc) {
+        PyObject* indexObj = PyObject_CallMethod(mode, "getIndex", NULL);
+        if (indexObj == NULL) {
+            return nullptr;
+        }
+        if (!PyLong_Check(indexObj)) {
+            Py_DECREF(indexObj);
+            return nullptr;
+        }
+        unsigned int index = PyLong_AsUnsignedLong(indexObj);
+        if (PyErr_Occurred()) {
+            Py_DECREF(indexObj);
+            return nullptr;
+        }
+        Py_DECREF(indexObj);
+
+        return new Digiham::Mbe::TableMode(index);
+    }
+
+    PyTypeObject* ControlWordModeType = getAmbeControlWordModeType();
+    rc = PyObject_IsInstance(mode, (PyObject*) ControlWordModeType);
+    Py_DECREF(TableModeType);
+
+    if (rc == -1) return nullptr;
+    if (rc) {
+        PyObject* controlWordBytes = PyObject_CallMethod(mode, "getBytes", NULL);
+        if (controlWordBytes == NULL) {
+            return nullptr;
+        }
+        if (!PyBytes_Check(controlWordBytes)) {
+            Py_DECREF(controlWordBytes);
+            return nullptr;
+        }
+        if (PyBytes_Size(controlWordBytes) != 12) {
+            Py_DECREF(controlWordBytes);
+            PyErr_SetString(PyExc_ValueError, "control word size mismatch, should be 12");
+            return nullptr;
+        }
+
+        short* controlWords = (short*) malloc(sizeof(short) * 6);
+        std::memcpy(controlWords, PyBytes_AsString(controlWordBytes), sizeof(short) * 6);
+
+        auto result = new Digiham::Mbe::ControlWordMode(controlWords);
+        free(controlWords);
+        return result;
+    }
+
+    PyTypeObject* DynamicModeType = getAmbeDynamicModeType();
+    rc = PyObject_IsInstance(mode, (PyObject*) DynamicModeType);
+    Py_DECREF(DynamicModeType);
+
+    if (rc == -1) return nullptr;
+    if (rc) {
+        Py_INCREF(mode);
+        return new Digiham::Mbe::DynamicMode([mode] (unsigned char code) {
+            // acquire GIL
+            PyGILState_STATE gstate;
+            gstate = PyGILState_Ensure();
+
+            PyObject* newMode = PyObject_CallMethod(mode, "getModeFor", "b", code);
+            Digiham::Mbe::Mode* result = convertToAmbeMode(newMode);
+            Py_DECREF(newMode);
+
+            /* Release the thread. No Python API allowed beyond this point. */
+            PyGILState_Release(gstate);
+
+            return result;
+        });
+    }
+
+    return nullptr;
+}
+
 static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* kwds) {
     self->inputFormat = FORMAT_CHAR;
     self->outputFormat = FORMAT_SHORT;
@@ -19,53 +98,7 @@ static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* k
     }
     Py_DECREF(ModeType);
 
-    Digiham::Mbe::Mode* ambeMode = nullptr;
-
-    PyTypeObject* TableModeType = getAmbeTableModeType();
-    int rc = PyObject_IsInstance(mode, (PyObject*) TableModeType);
-    Py_DECREF(TableModeType);
-
-    if (rc == -1) return -1;
-    if (rc) {
-        PyObject* indexObj = PyObject_CallMethod(mode, "getIndex", NULL);
-        if (!PyLong_Check(indexObj)) {
-            Py_DECREF(indexObj);
-            return -1;
-        }
-        unsigned int index = PyLong_AsUnsignedLong(indexObj);
-        if (PyErr_Occurred()) {
-            Py_DECREF(indexObj);
-            return -1;
-        }
-        Py_DECREF(indexObj);
-
-        ambeMode = new Digiham::Mbe::TableMode(index);
-    }
-
-    PyTypeObject* ControlWordModeType = getAmbeControlWordModeType();
-    rc = PyObject_IsInstance(mode, (PyObject*) ControlWordModeType);
-    Py_DECREF(TableModeType);
-
-    if (rc == -1) return -1;
-    if (rc) {
-        PyObject* controlWordBytes = PyObject_CallMethod(mode, "getBytes", NULL);
-        if (!PyBytes_Check(controlWordBytes)) {
-            Py_DECREF(controlWordBytes);
-            return -1;
-        }
-        if (PyBytes_Size(controlWordBytes) != 12) {
-            Py_DECREF(controlWordBytes);
-            PyErr_SetString(PyExc_ValueError, "control word size mismatch, should be 12");
-            return -1;
-        }
-
-        short* controlWords = (short*) malloc(sizeof(short) * 6);
-        std::memcpy(controlWords, PyBytes_AsString(controlWordBytes), sizeof(short) * 6);
-
-        ambeMode = new Digiham::Mbe::ControlWordMode(controlWords);
-        free(controlWords);
-    }
-
+    Digiham::Mbe::Mode* ambeMode = convertToAmbeMode(mode);
     if (ambeMode == nullptr) {
         PyErr_SetString(PyExc_ValueError, "unsupported ambe mode");
         return -1;

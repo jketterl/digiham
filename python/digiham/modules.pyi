@@ -58,3 +58,7 @@ class DmrDecoder(Decoder):
 
     def setSlotFilter(self, filter: int) -> None:
         ...
+
+class YsfDecoder(Decoder):
+    def __init__(self):
+        ...

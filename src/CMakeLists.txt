@@ -30,16 +30,17 @@ add_subdirectory(dstar_decoder)
 add_subdirectory(nxdn_decoder)
 
 add_library(digiham SHARED
-        $<TARGET_OBJECTS:digiham_util>
-        $<TARGET_OBJECTS:digiham_dstar>
-        $<TARGET_OBJECTS:digiham_nxdn>
-        $<TARGET_OBJECTS:digiham_dc_block>
-        $<TARGET_OBJECTS:digiham_fsk_demodulator>
-        $<TARGET_OBJECTS:digiham_digitalvoice_filter>
-        $<TARGET_OBJECTS:digiham_rrc_filter>
-        $<TARGET_OBJECTS:digiham_mbe>
-        $<TARGET_OBJECTS:digiham_gfsk_demodulator>
-        $<TARGET_OBJECTS:digiham_dmr_decoder>
+    $<TARGET_OBJECTS:digiham_util>
+    $<TARGET_OBJECTS:digiham_dstar>
+    $<TARGET_OBJECTS:digiham_nxdn>
+    $<TARGET_OBJECTS:digiham_dc_block>
+    $<TARGET_OBJECTS:digiham_fsk_demodulator>
+    $<TARGET_OBJECTS:digiham_digitalvoice_filter>
+    $<TARGET_OBJECTS:digiham_rrc_filter>
+    $<TARGET_OBJECTS:digiham_mbe>
+    $<TARGET_OBJECTS:digiham_gfsk_demodulator>
+    $<TARGET_OBJECTS:digiham_dmr_decoder>
+    $<TARGET_OBJECTS:digiham_ysf_decoder>
 )
 target_link_libraries(digiham Csdr::csdr++ CodecServer::codecserver)
 set_target_properties(digiham PROPERTIES VERSION ${PROJECT_VERSION})
