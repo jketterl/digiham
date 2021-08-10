@@ -70,8 +70,16 @@ static Digiham::Mbe::Mode* convertToAmbeMode(PyObject* mode) {
             gstate = PyGILState_Ensure();
 
             PyObject* newMode = PyObject_CallMethod(mode, "getModeFor", "b", code);
-            Digiham::Mbe::Mode* result = convertToAmbeMode(newMode);
-            Py_DECREF(newMode);
+            Digiham::Mbe::Mode* result = nullptr;
+            if (newMode == NULL) {
+                std::cerr << "failed to get mode for code " << +code << "\n";
+            } else if (newMode == Py_None) {
+                std::cerr << "mode for code " << +code << " was None\n";
+                Py_DECREF(newMode);
+            } else {
+                result = convertToAmbeMode(newMode);
+                Py_DECREF(newMode);
+            }
 
             /* Release the thread. No Python API allowed beyond this point. */
             PyGILState_Release(gstate);
