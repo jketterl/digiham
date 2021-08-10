@@ -15,7 +15,7 @@ unsigned int TableMode::getIndex() const {
 
 bool TableMode::operator==(const Mode &other) {
     try {
-        auto tmode = dynamic_cast<const TableMode&>(other);
+        auto& tmode = dynamic_cast<const TableMode&>(other);
         return tmode.getIndex() == getIndex();
     } catch (std::bad_cast&) {
         return false;
@@ -25,14 +25,14 @@ bool TableMode::operator==(const Mode &other) {
 ControlWordMode::ControlWordMode(short* cwds):
     cwds((short*) malloc(sizeof(short) * 6))
 {
-    std::memcpy((void *) this->cwds, cwds, sizeof(short) * 6);
+    std::memcpy(this->cwds, cwds, sizeof(short) * 6);
 }
 
 ControlWordMode::~ControlWordMode() {
     free(cwds);
 }
 
-short* ControlWordMode::getCwds() {
+short* ControlWordMode::getCwds() const {
     return cwds;
 }
 
@@ -47,7 +47,7 @@ std::string ControlWordMode::getCwdsAsString() {
 
 bool ControlWordMode::operator==(const Mode &other) {
     try {
-        auto cmode = dynamic_cast<const ControlWordMode&>(other);
+        auto& cmode = dynamic_cast<const ControlWordMode&>(other);
         return std::memcmp(cmode.getCwds(), getCwds(), sizeof(short) * 6) == 0;
     } catch (std::bad_cast&) {
         return false;

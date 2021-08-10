@@ -31,7 +31,7 @@ static Digiham::Mbe::Mode* convertToAmbeMode(PyObject* mode) {
 
     PyTypeObject* ControlWordModeType = getAmbeControlWordModeType();
     rc = PyObject_IsInstance(mode, (PyObject*) ControlWordModeType);
-    Py_DECREF(TableModeType);
+    Py_DECREF(ControlWordModeType);
 
     if (rc == -1) return nullptr;
     if (rc) {

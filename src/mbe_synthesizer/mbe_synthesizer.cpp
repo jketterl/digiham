@@ -14,10 +14,6 @@ using namespace CodecServer::proto;
 MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode):
     mode(mode)
 {
-    if (dynamic_cast<DynamicMode*>(mode)) {
-        dynamicMode = true;
-    }
-
     // IPv6 / IPv4 socket
     struct addrinfo hints;
     struct addrinfo* result;
@@ -87,6 +83,7 @@ MbeSynthesizer::MbeSynthesizer(Mode* mode): MbeSynthesizer("/tmp/codecserver.soc
 
 void MbeSynthesizer::init() {
     connection = new CodecServer::Connection(sock);
+    dynamicMode = dynamic_cast<DynamicMode*>(mode) != nullptr;
     handshake();
     readerThread = new std::thread([this] () { readLoop(); });
 }

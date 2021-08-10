@@ -26,7 +26,7 @@ namespace Digiham {
             public:
                 explicit ControlWordMode(short* cwds);
                 ~ControlWordMode() override;
-                short* getCwds();
+                short* getCwds() const;
                 std::string getCwdsAsString();
                 bool operator==(const Mode& other) override;
             private:
