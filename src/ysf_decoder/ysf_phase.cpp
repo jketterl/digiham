@@ -107,10 +107,55 @@ Digiham::Phase* FramePhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wri
                         }
                         break;
                     }
+                    case DATA_TYPE_VOICE_FR: {
+                        ((MetaCollector*) meta)->setMode("VW");
+                        // TODO sub header
+                        int start_frame = 0;
+                        if (expectSubFrame) start_frame = 3;
+                        expectSubFrame = false;
+
+                        // contains 5 voice channel blocks à 144 bits
+                        for (int i = start_frame; i < 5; i++) {
+                            // voice decoder mode byte
+                            *(output->getWritePointer()) = runningFich->getDataType();
+
+                            int offset = i * 72;
+                            decodeFRVoicePayload(payload + offset, output->getWritePointer() + 1);
+
+                            output->advance(19);
+                        }
+
+                        break;
+                    }
+                    case DATA_TYPE_DATA_FR: {
+                        // not implemented
+                        ((MetaCollector*) meta)->setMode("FR data");
+                        break;
+                    }
                 }
                 break;
             }
             case FRAME_TYPE_HEADER_CHANNEL: {
+                auto c = (MetaCollector*) meta;
+                c->reset();
+                c->hold();
+                unsigned char* dch = decodeHeaderDataChannel(data->getReadPointer());
+                if (dch != nullptr) {
+                    // CSD1 - contains Dest and Src fields
+                    c->setDestination(treatYsfString(std::string((char*) dch, 10)));
+                    c->setSource(treatYsfString(std::string((char*) dch + 10, 10)));
+                    free(dch);
+                }
+                dch = decodeHeaderDataChannel(data->getReadPointer() + 36);
+                if (dch != nullptr) {
+                    c->setDown(treatYsfString(std::string((char*) dch, 10)));
+                    c->setUp(treatYsfString(std::string((char*) dch + 10, 10)));
+                    free(dch);
+                }
+                c->release();
+
+                // TODO only set this on FR mode
+                expectSubFrame = true;
                 break;
             }
             case FRAME_TYPE_TERMINATOR_CHANNEL: {
@@ -225,16 +270,16 @@ void FramePhase::decodeV2DataChannel(unsigned char *in, unsigned char frameNumbe
         auto collector = (MetaCollector*) meta;
         switch (frameNumber) {
             case 0:
-                collector->setDestination(contents);
+                collector->setDestination(treatYsfString(contents));
                 break;
             case 1:
-                collector->setSource(contents);
+                collector->setSource(treatYsfString(contents));
                 break;
             case 2:
-                collector->setDown(contents);
+                collector->setDown(treatYsfString(contents));
                 break;
             case 3:
-                collector->setUp(contents);
+                collector->setUp(treatYsfString(contents));
                 break;
             default:
                 // TODO: 4 contains REM1 & REM2
@@ -258,4 +303,54 @@ void FramePhase::decodeV2DataChannel(unsigned char *in, unsigned char frameNumbe
             delete data;
         }
     }
+}
+
+void FramePhase::decodeFRVoicePayload(unsigned char *in, unsigned char *out) {
+    std::memset(out, 0, 18);
+    // 20 dibits sync + 100 dibits fich + block offset
+    for (int k = 0; k < 72; k++) {
+        out[k / 4] |= (in[k] & 3) << (6 - 2 * (k % 4));
+    }
+
+}
+
+unsigned char *FramePhase::decodeHeaderDataChannel(unsigned char *in) {
+    // contains 5 data channel blocks à 40 bits
+    unsigned char dch_raw[45] = { 0 };
+
+    // 20 by 9 dibit matrix interleaving
+    // also pulls out the bits from their 72bit blocks
+    for (int i = 0; i < 180; i++) {
+        int pos = i / 4;
+        int shift = 6 - 2 * (i % 4);
+
+        int streampos = (i % 9) * 20 + i / 9;
+        int blockpos = (streampos / 36) * 72;
+        int blockoffset = streampos % 36;
+        int inpos = blockpos + blockoffset;
+
+        dch_raw[pos] |= (in[inpos] & 3) << shift;
+    }
+
+    uint8_t dch_whitened[23] = { 0 };
+    uint8_t r = decode_trellis(dch_raw, 180, dch_whitened);
+
+    uint16_t checksum = (dch_whitened[20] << 8) | dch_whitened[21];
+    bool crc_valid = crc16((uint8_t *) &dch_whitened, 20, &checksum);
+
+    if (!crc_valid) {
+        return nullptr;
+    }
+
+    auto dch = (unsigned char*) malloc(sizeof(unsigned char) * 20);
+    decode_whitening(&dch_whitened[0], dch, 160);
+
+    return dch;
+}
+
+std::string FramePhase::treatYsfString(const std::string& input) {
+    auto end = input.find_last_not_of("\n ");
+    if (end == std::string::npos) return  "";
+    // TODO convert to UTF-8
+    return input.substr(0, end + 1);
 }

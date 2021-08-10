@@ -38,6 +38,9 @@ namespace Digiham::Ysf {
             void decodeTribits(uint8_t* in, uint8_t* out, uint8_t length);
             void interleaveV2VoicePayload(uint8_t payload[7], uint8_t result[7]);
             void decodeV2DataChannel(unsigned char* in, unsigned char frameNumer);
+            void decodeFRVoicePayload(unsigned char* in, unsigned char* out);
+            unsigned char* decodeHeaderDataChannel(unsigned char* in);
+            std::string treatYsfString(const std::string& input);
 
             const uint8_t tribit_majority_table[8] = { 0, 0, 0, 1, 0, 1, 1, 1 };
             const uint8_t v2_voice_mapping[49] = {
@@ -50,6 +53,7 @@ namespace Digiham::Ysf {
             int syncCount = 0;
             Fich* runningFich = nullptr;
             DataCollector* dataCollector = new DataCollector();
+            bool expectSubFrame = false;
     };
 
 }
