@@ -26,12 +26,10 @@ Facch1* Facch1::parse(unsigned char* raw) {
     return nullptr;
 }
 
-Facch1::Facch1(unsigned char* data) {
-    this->data = data;
-}
+Facch1::Facch1(unsigned char* data): data(data) {}
 
 Facch1::~Facch1() {
-    free(this->data);
+    free(data);
 }
 
 unsigned char Facch1::getMessageType() {
