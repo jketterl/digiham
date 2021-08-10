@@ -272,6 +272,8 @@ int Cli::buildSocket() {
             return -1;
         }
 
+        freeaddrinfo(result);
+
         return sock;
     }
 }
