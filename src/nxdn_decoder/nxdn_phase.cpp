@@ -38,6 +38,7 @@ FramedPhase::FramedPhase() {
 FramedPhase::~FramedPhase() {
     delete scrambler;
     delete sacchCollector;
+    delete lich;
 }
 
 Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
@@ -64,8 +65,9 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
 
     Lich* new_lich = Lich::parse(lich_descrambled);
     if (new_lich != nullptr) {
-        if (lich != nullptr) delete lich;
+        auto old = lich;
         lich = new_lich;
+        delete old;
     }
     if (
         lich != nullptr &&

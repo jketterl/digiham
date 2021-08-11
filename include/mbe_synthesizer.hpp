@@ -19,8 +19,8 @@ namespace Digiham {
 
         class MbeSynthesizer: public Csdr::Module<unsigned char, short> {
             public:
-                MbeSynthesizer(Mode* mode);
-                explicit MbeSynthesizer(std::string path, Mode* mode);
+                explicit MbeSynthesizer(Mode* mode);
+                MbeSynthesizer(std::string path, Mode* mode);
                 MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode);
                 ~MbeSynthesizer() override;
                 bool canProcess() override;

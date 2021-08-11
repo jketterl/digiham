@@ -50,6 +50,8 @@ MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mod
         ::close(sock);
     }
 
+    freeaddrinfo(result);
+
     if (rp == NULL) {
         throw ConnectionError("could not connect to to server");
     }
@@ -99,7 +101,15 @@ MbeSynthesizer::~MbeSynthesizer() {
     if (readerThread != nullptr) {
         readerThread->join();
         delete readerThread;
+        readerThread = nullptr;
     }
+    // avoid double delete by checking for identity first
+    if (currentMode != mode) {
+        delete currentMode;
+    }
+    delete mode;
+    currentMode = nullptr;
+    mode = nullptr;
 }
 
 void MbeSynthesizer::handshake() {
@@ -244,6 +254,8 @@ void MbeSynthesizer::readLoop() {
                 } else {
                     std::cerr << "received unexpected message type\n";
                 }
+
+                delete message;
             }
         //} else {
             // no data, just timeout.
