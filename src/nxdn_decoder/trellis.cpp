@@ -27,7 +27,7 @@ const uint8_t Trellis::transitions[16][2] = {
 };
 
 unsigned int Trellis::decode(unsigned char* input, unsigned char* output, size_t len) {
-    uint8_t data_size = (len + 7) / 8;
+    uint8_t data_size = (len + 15) / 16;
 
     // prior knowledge: we know we start off with four zeros
     // this variable blocks out parts of the state vars
