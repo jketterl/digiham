@@ -62,3 +62,8 @@ class DmrDecoder(Decoder):
 class YsfDecoder(Decoder):
     def __init__(self):
         ...
+
+
+class PocsagDecoder(Decoder):
+    def __init__(self):
+        ...

@@ -13,6 +13,7 @@
 #include "nxdndecoder.hpp"
 #include "dmrdecoder.hpp"
 #include "ysfdecoder.hpp"
+#include "pocsagdecoder.hpp"
 
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
@@ -87,6 +88,12 @@ PyInit_modules(void) {
     PyObject* YsfDecoderType = PyType_FromSpecWithBases(&YsfDecoderSpec, bases);
     if (YsfDecoderType == NULL) return NULL;
 
+    Py_INCREF(DecoderType);
+    bases = PyTuple_Pack(1, DecoderType);
+    if (bases == NULL) return NULL;
+    PyObject* PocsagDecoderType = PyType_FromSpecWithBases(&PocsagDecoderSpec, bases);
+    if (PocsagDecoderType == NULL) return NULL;
+
     PyObject *m = PyModule_Create(&pycsdrmodule);
     if (m == NULL) {
         return NULL;
@@ -113,6 +120,8 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "DmrDecoder", DmrDecoderType);
 
     PyModule_AddObject(m, "YsfDecoder", YsfDecoderType);
+
+    PyModule_AddObject(m, "PocsagDecoder", PocsagDecoderType);
 
     return m;
 }

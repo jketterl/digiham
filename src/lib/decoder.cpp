@@ -9,6 +9,10 @@ Decoder::Decoder(Phase* initialPhase, MetaCollector* collector):
     metaCollector(collector)
 {}
 
+Decoder::Decoder(Phase* initialPhase):
+    Decoder(initialPhase, nullptr)
+{}
+
 Decoder::~Decoder() {
     delete currentPhase;
     delete metaCollector;
@@ -26,6 +30,10 @@ void Decoder::process() {
 }
 
 void Decoder::setMetaWriter(MetaWriter *writer) {
+    if (metaCollector == nullptr) {
+        delete writer;
+        return;
+    }
     metaCollector->setWriter(writer);
 }
 

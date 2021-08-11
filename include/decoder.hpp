@@ -17,6 +17,7 @@ namespace Digiham {
     class Decoder: public Csdr::Module<unsigned char, unsigned char> {
         public:
             Decoder(Phase* initialPhase, MetaCollector* collector);
+            explicit Decoder(Phase* initialPhase);
             ~Decoder() override;
             bool canProcess() override;
             void process() override;

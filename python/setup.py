@@ -33,6 +33,7 @@ setup(
                 "src/gfskdemodulator.cpp",
                 "src/dmrdecoder.cpp",
                 "src/ysfdecoder.cpp",
+                "src/pocsagdecoder.cpp",
             ],
             language="c++",
             include_dirs=[
