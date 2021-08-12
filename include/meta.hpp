@@ -44,7 +44,8 @@ namespace Digiham {
             virtual void sendMetaData();
             virtual void sendMetaData(std::map<std::string, std::string> metadata);
         private:
-            bool held = false;
+            int held = 0;
+            bool dirty = false;
             MetaWriter* writer;
     };
 

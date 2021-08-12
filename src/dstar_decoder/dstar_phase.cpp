@@ -55,11 +55,12 @@ Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
     if (header->isVoice()) {
         // only set the header when we're actually entering voice phase
         // since data phase is not implemented and we don't detect it's end
-        ((MetaCollector*) meta)->setHeader(header);
+        ((MetaCollector*) meta)->setFromHeader(header);
+        delete header;
         return new VoicePhase();
     }
 
-    delete(header);
+    delete header;
     return new SyncPhase();
 }
 
@@ -211,10 +212,9 @@ void VoicePhase::parseFrameData() {
         memcpy(headerData, header, 41);
         Header* h = new Header(headerData);
         if (h->isCrcValid()) {
-            ((MetaCollector*) meta)->setHeader(h);
-        } else {
-            delete(h);
+            ((MetaCollector*) meta)->setFromHeader(h);
         }
+        delete(h);
     }
     size_t pos;
     while ((pos = simpleData.find('\r')) != std::string::npos) {

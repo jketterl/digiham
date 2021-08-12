@@ -50,12 +50,15 @@ void MetaCollector::setWriter(MetaWriter *writer) {
 }
 
 void MetaCollector::hold() {
-    held = true;
+    held++;
 }
 
 void MetaCollector::release() {
-    held = false;
-    sendMetaData();
+    held--;
+    if (held == 0) {
+        if (dirty) sendMetaData();
+        dirty = false;
+    }
 }
 
 std::map<std::string, std::string> MetaCollector::collect() {
@@ -68,6 +71,10 @@ void MetaCollector::sendMetaData(std::map<std::string, std::string> metadata) {
 
 
 void MetaCollector::sendMetaData() {
-    if (writer == nullptr || held) return;
+    if (writer == nullptr) return;
+    if (held) {
+        dirty = true;
+        return;
+    }
     sendMetaData(collect());
 }

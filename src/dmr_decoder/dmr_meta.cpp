@@ -151,9 +151,8 @@ void MetaCollector::sendMetaDataForSlot(int slotIndex) {
 }
 
 void MetaCollector::reset() {
-    hold();
     for (int i = 0; i < 2; i++) {
         slots[i]->reset();
     }
-    release();
+    sendMetaData();
 }

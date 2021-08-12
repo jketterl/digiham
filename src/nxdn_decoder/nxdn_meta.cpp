@@ -10,16 +10,16 @@ std::map<std::string, std::string> MetaCollector::collect() {
         metadata["sync"] = sync;
     }
 
-    if (sacch != nullptr) {
-        if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
-            if (sacch->getCallType() == NXDN_CALL_TYPE_CONFERENCE) {
-                metadata["type"] = "conference";
-            } else if (sacch->getCallType() == NXDN_CALL_TYPE_INDIVIDUAL) {
-                metadata["type"] = "individual";
-            }
-            metadata["source"] = std::to_string(sacch->getSourceUnitId());
-            metadata["destination"] = std::to_string(sacch->getDestinationId());
-        }
+    if (!type.empty()) {
+        metadata["type"] = type;
+    }
+
+    if (source != 0) {
+        metadata["source"] = std::to_string(source);
+    }
+
+    if (destination != 0) {
+        metadata["destination"] = std::to_string(destination);
     }
 
     return metadata;
@@ -35,15 +35,43 @@ void MetaCollector::setSync(std::string sync) {
     sendMetaData();
 }
 
-void MetaCollector::setSacch(SacchSuperframe* sacch) {
-    delete this->sacch;
-    this->sacch = sacch;
+void MetaCollector::setType(std::string type) {
+    if (this->type == type) return;
+    this->type = type;
     sendMetaData();
+}
+
+void MetaCollector::setSource(uint16_t source) {
+    if (this->source == source) return;
+    this->source = source;
+    sendMetaData();
+}
+
+void MetaCollector::setDestination(uint16_t destination) {
+    if (this->destination == destination) return;
+    this->destination = destination;
+    sendMetaData();
+}
+
+void MetaCollector::setFromSacch(SacchSuperframe* sacch) {
+    if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
+        if (sacch->getCallType() == NXDN_CALL_TYPE_CONFERENCE) {
+            setType("conference");
+        } else if (sacch->getCallType() == NXDN_CALL_TYPE_INDIVIDUAL) {
+            setType("individual");
+        } else {
+            setType("");
+        }
+        setSource(sacch->getSourceUnitId());
+        setDestination(sacch->getDestinationId());
+    }
 }
 
 void MetaCollector::reset() {
     hold();
     setSync("");
-    setSacch(nullptr);
+    setType("");
+    setSource(0);
+    setDestination(0);
     release();
 }

@@ -9,8 +9,12 @@ namespace Digiham::DStar {
     class MetaCollector: public Digiham::MetaCollector {
         public:
             void setSync(std::string sync);
-            void setHeader(Header* header);
+            void setFromHeader(Header* header);
             void setMessage(std::string message);
+            void setDeparture(std::string departure);
+            void setDestination(std::string destination);
+            void setOurCall(std::string ourCall);
+            void setYourCall(std::string yourCall);
             void setDPRS(std::string dprs);
             void setGPS(float lat, float lon);
             void reset();
@@ -18,9 +22,12 @@ namespace Digiham::DStar {
             std::string getProtocol() override;
             std::map<std::string, std::string> collect() override;
         private:
-            Header* header = nullptr;
             std::string sync;
             std::string message;
+            std::string departure;
+            std::string destination;
+            std::string ourCall;
+            std::string yourCall;
             std::string dprs;
             float lat;
             float lon;

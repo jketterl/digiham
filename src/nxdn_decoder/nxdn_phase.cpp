@@ -112,10 +112,11 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
             if (sacch != nullptr) {
                 sacchCollector->push(sacch);
                 if (sacchCollector->isComplete()) {
-                    SacchSuperframe* sacch = sacchCollector->getSuperframe();
-                    if (sacch->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
-                        ((MetaCollector*) meta)->setSacch(sacch);
+                    SacchSuperframe* sacchSf = sacchCollector->getSuperframe();
+                    if (sacchSf->getMessageType() == NXDN_MESSAGE_TYPE_VCALL) {
+                        ((MetaCollector*) meta)->setFromSacch(sacchSf);
                     }
+                    delete sacchSf;
                     sacchCollector->reset();
                 }
             }
