@@ -60,7 +60,7 @@ void Cli::fifoLoop() {
 
     while (true) {
         int error;
-        while (!(error = ferror(fifo)) && fread(control_line, sizeof(char), control_bufsize, fifo) >= 2) {
+        while (!(error = ferror(fifo)) && fread(control_line, sizeof(char), 2, fifo) >= 2) {
             if (control_line[1] == '\n') {
                 unsigned char slot_filter = control_line[0] - '0';
                 decoder->setSlotFilter(slot_filter);
