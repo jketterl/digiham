@@ -94,14 +94,24 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
 
     Cach* cach = Cach::parse(data->getReadPointer());
     // slots should always be alternating, but may be overridden by 100% correct tact
+    // this is our assumption of what the next slot should be, based on the last slot:
     unsigned char next = slot ^ 1;
     if (cach->hasTact()) {
+        // is our assumption correct?
         if (cach->getTact()->getSlot() != next) {
+            // no. act according to the level of confidence aka. slotStability
             if (slotStability < 5) {
                 slotStability = 0;
                 slot = cach->getTact()->getSlot();
+                // if we do switch, reset the other slot
+                unsigned char otherSlot = slot ^ 1;
+                syncTypes[otherSlot] = -1;
+                ((MetaCollector*) meta)->withSlot(otherSlot, [] (Slot* s) { s->reset(); });
+                if (activeSlot == otherSlot) activeSlot = -1;
             } else {
-                if (slotStability-- < -100) slotStability = -100;
+                // no need to check for a lower boundary since once the stability goes below the threshold, the other
+                // branch of this if kicks in
+                slotStability--;
                 if (slot != -1) {
                     slot = next;
                 }
