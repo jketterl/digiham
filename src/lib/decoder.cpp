@@ -19,10 +19,12 @@ Decoder::~Decoder() {
 }
 
 bool Decoder::canProcess() {
+    std::lock_guard<std::mutex> lock(processMutex);
     return reader->available() > currentPhase->getRequiredData();
 }
 
 void Decoder::process() {
+    std::lock_guard<std::mutex> lock(processMutex);
     Phase* next = currentPhase->process(reader, writer);
     if (next != nullptr) {
         setPhase(next);

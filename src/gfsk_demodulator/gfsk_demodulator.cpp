@@ -16,11 +16,13 @@ GfskDemodulator::~GfskDemodulator() {
 }
 
 bool GfskDemodulator::canProcess() {
+    std::lock_guard<std::mutex> lock(processMutex);
     // +1 for variance calculation "jumps"
     return reader->available() > samplesPerSymbol + 1 && writer->writeable() > 0;
 }
 
 void GfskDemodulator::process() {
+    std::lock_guard<std::mutex> lock(processMutex);
     float* input = reader->getReadPointer();
 
     float sum = 0.0f;

@@ -180,10 +180,12 @@ void MbeSynthesizer::handshake() {
 }
 
 bool MbeSynthesizer::canProcess() {
+    std::lock_guard<std::mutex> lock(processMutex);
     return reader->available() > framing.channelbytes();
 }
 
 void MbeSynthesizer::process() {
+    std::lock_guard<std::mutex> lock(processMutex);
     if (dynamicMode) {
         auto code = *(reader->getReadPointer());
         reader->advance(1);
