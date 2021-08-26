@@ -66,6 +66,7 @@ std::map<std::string, std::string> MetaCollector::collect() {
 }
 
 void MetaCollector::sendMetaData(std::map<std::string, std::string> metadata) {
+    if (writer == nullptr) return;
     writer->sendMetaData(std::move(metadata));
 }
 
