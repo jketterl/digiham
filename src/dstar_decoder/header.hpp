@@ -6,12 +6,12 @@ namespace Digiham::DStar {
 
     class Header {
         public:
-            static Header* parse(unsigned char* raw);
+            static Header* parseFromHeader(unsigned char* raw);
+            static Header* parseFromFrameData(unsigned char* data);
             static const unsigned int bits = 660;
 
             explicit Header(unsigned char* data);
             ~Header();
-            bool isCrcValid();
             bool isData();
             bool isVoice() { return !isData(); }
             std::string getDestinationRepeater();

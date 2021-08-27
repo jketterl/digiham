@@ -18,7 +18,7 @@ Header::~Header() {
     free(data);
 }
 
-Header* Header::parse(unsigned char* raw) {
+Header* Header::parseFromHeader(unsigned char* raw) {
     Scrambler* scrambler = new Scrambler();
     unsigned char* descrambled = (unsigned char*) malloc(sizeof(unsigned char) * Header::bits);
     scrambler->scramble(raw, descrambled, Header::bits);
@@ -32,16 +32,24 @@ Header* Header::parse(unsigned char* raw) {
     unsigned int errors = viterbi_decode(deinterleaved, decoded);
     free(deinterleaved);
 
-    if (errors < 10) {
-        Header* header = new Header(decoded);
-        if (header->isCrcValid()) {
-            return new Header(decoded);
-        }
-        delete header;
+    if (errors > 10) {
+        free(decoded);
+        return nullptr;
     }
 
-    free(decoded);
-    return nullptr;
+    auto header = parseFromFrameData(decoded);
+    if (header == nullptr) {
+        free(decoded);
+    }
+    return header;
+}
+
+Header* Header::parseFromFrameData(unsigned char* decoded) {
+    if (!Crc::isCrcValid(decoded, 39, *((uint16_t*) (decoded + 39)))) {
+        return nullptr;
+    }
+
+    return new Header(decoded);
 }
 
 void Header::deinterleave(unsigned char* in, unsigned char* out) {
@@ -136,10 +144,6 @@ unsigned int Header::viterbi_decode(unsigned char* input, unsigned char* output)
     free(branches);
 
     return best_metric;
-}
-
-bool Header::isCrcValid() {
-    return Crc::isCrcValid(data, 39, *((uint16_t*) (data + 39)));
 }
 
 bool Header::isData() {

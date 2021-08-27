@@ -36,14 +36,8 @@ Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writ
 Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
     unsigned char* raw = data->getReadPointer();
 
-    Header* header = Header::parse(raw);
+    Header* header = Header::parseFromHeader(raw);
     if (header == nullptr) {
-        data->advance(1);
-        return new SyncPhase();
-    }
-
-    if (!header->isCrcValid()) {
-        delete header;
         data->advance(1);
         return new SyncPhase();
     }
@@ -208,13 +202,15 @@ void VoicePhase::parseFrameData() {
         ((MetaCollector*) meta)->setMessage(std::string((char*)message, 20));
     }
     if (headerCount == 41) {
-        unsigned char* headerData = (unsigned char*) malloc(41);
+        auto headerData = (unsigned char*) malloc(41);
         memcpy(headerData, header, 41);
-        Header* h = new Header(headerData);
-        if (h->isCrcValid()) {
+        Header* h = Header::parseFromFrameData(headerData);
+        if (h != nullptr) {
             ((MetaCollector*) meta)->setFromHeader(h);
+            delete(h);
+        } else {
+            free(headerData);
         }
-        delete(h);
     }
     size_t pos;
     while ((pos = simpleData.find('\r')) != std::string::npos) {
