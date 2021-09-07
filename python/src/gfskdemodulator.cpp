@@ -11,6 +11,11 @@ static int GfskDemodulator_init(GfskDemodulator* self, PyObject* args, PyObject*
         return -1;
     }
 
+    if (samplesPerSymbol == 0) {
+        PyErr_SetString(PyExc_ValueError, "samplesPerSymbol must not be zero");
+        return -1;
+    }
+
     self->inputFormat = FORMAT_FLOAT;
     self->outputFormat = FORMAT_CHAR;
     self->setModule(new Digiham::Fsk::GfskDemodulator(samplesPerSymbol));

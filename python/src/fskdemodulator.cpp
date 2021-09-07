@@ -7,8 +7,13 @@ static int FskDemodulator_init(FskDemodulator* self, PyObject* args, PyObject* k
     static char* kwlist[] = {(char*) "samplesPerSymbol", (char*) "invert", NULL};
 
     unsigned int samplesPerSymbol = 40;
-    bool invert = false;
+    int invert = false;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Ip", kwlist, &samplesPerSymbol, &invert)) {
+        return -1;
+    }
+
+    if (samplesPerSymbol == 0) {
+        PyErr_SetString(PyExc_ValueError, "samplesPerSymbol must not be zero");
         return -1;
     }
 
