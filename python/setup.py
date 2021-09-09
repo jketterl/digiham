@@ -34,6 +34,7 @@ setup(
                 "src/dmrdecoder.cpp",
                 "src/ysfdecoder.cpp",
                 "src/pocsagdecoder.cpp",
+                "src/picklewriter.cpp",
             ],
             language="c++",
             include_dirs=[

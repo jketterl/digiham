@@ -2,7 +2,7 @@
 #include "types.hpp"
 
 #include <digiham/decoder.hpp>
-#include <digiham/meta.hpp>
+#include "picklewriter.hpp"
 
 static PyObject* Decoder_setMetaWriter(Decoder* self, PyObject* args, PyObject* kwds) {
     static char* kwlist[] = {(char*) "writer", NULL};
@@ -29,7 +29,7 @@ static PyObject* Decoder_setMetaWriter(Decoder* self, PyObject* args, PyObject* 
         self->metaWriter = writer;
         Py_INCREF(self->metaWriter);
 
-        auto metaWriter = new Digiham::PipelineMetaWriter();
+        auto metaWriter = new Digiham::PickleWriter();
         metaWriter->setWriter(dynamic_cast<Csdr::Writer<unsigned char>*>(writer->writer));
         dynamic_cast<Digiham::Decoder*>(self->module)->setMetaWriter(metaWriter);
     }
