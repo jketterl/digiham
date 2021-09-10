@@ -93,9 +93,11 @@ void MetaCollector::setRadio(std::string radio) {
     sendMetaData();
 }
 
-void MetaCollector::setGps(coordinate* coord) {
-    // TODO implement actual comparison
-    if (this->coord == coord) return;
+void MetaCollector::setGps(Coordinate* coord) {
+    if (this->coord == coord || (this->coord != nullptr && coord != nullptr && *this->coord == *coord)) {
+        delete coord;
+        return;
+    }
     // prevent race conditions
     auto old = this->coord;
     this->coord = coord;

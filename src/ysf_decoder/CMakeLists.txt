@@ -1,4 +1,4 @@
-add_library(digiham_ysf_decoder OBJECT ysf_decoder.cpp ysf_phase.cpp ysf_meta.cpp fich.cpp trellis.c golay_24_12.c crc16.c whitening.c data.cpp gps.c radio_types.c)
+add_library(digiham_ysf_decoder OBJECT ysf_decoder.cpp ysf_phase.cpp ysf_meta.cpp fich.cpp trellis.c golay_24_12.c crc16.c whitening.c data.cpp gps.cpp radio_types.c)
 target_compile_options(digiham_ysf_decoder PRIVATE "-fPIC")
 
 add_executable(ysf_decoder ysf_cli.cpp)

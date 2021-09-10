@@ -1,10 +1,7 @@
 #pragma once
 
 #include "meta.hpp"
-
-extern "C" {
-#include "gps.h"
-}
+#include "gps.hpp"
 
 namespace Digiham::Ysf {
 
@@ -18,7 +15,7 @@ namespace Digiham::Ysf {
             void setUp(std::string up);
             void setDown(std::string down);
             void setRadio(std::string radio);
-            void setGps(coordinate* coordinate);
+            void setGps(Coordinate* coordinate);
         protected:
             std::string getProtocol() override;
             std::map<std::string, std::string> collect() override;
@@ -28,7 +25,7 @@ namespace Digiham::Ysf {
             std::string up;
             std::string down;
             std::string radio;
-            coordinate* coord = nullptr;
+            Coordinate* coord = nullptr;
     };
 
 }

@@ -2,9 +2,7 @@
 
 #include <string>
 
-extern "C" {
-#include "gps.h"
-}
+#include "gps.hpp"
 
 #define COMMAND_NULL0_GPS     0x22615f
 #define COMMAND_SHORT_GPS     0x22625f
@@ -17,7 +15,7 @@ namespace Digiham::Ysf {
             explicit DataFrame(unsigned char* data);
             ~DataFrame();
             uint32_t getCommand();
-            coordinate* getGpsCoordinate();
+            Coordinate* getGpsCoordinate();
             std::string getRadio();
         private:
             unsigned char* data;

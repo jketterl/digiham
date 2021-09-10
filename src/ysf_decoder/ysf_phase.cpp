@@ -298,7 +298,7 @@ void FramePhase::decodeV2DataChannel(unsigned char *in, unsigned char frameNumbe
     if (dataCollector->hasCollected(2)) {
         DataFrame* data = dataCollector->getDataFrame();
         if (data != nullptr) {
-            coordinate* coord = data->getGpsCoordinate();
+            Coordinate* coord = data->getGpsCoordinate();
             ((MetaCollector*) meta)->setGps(coord);
             delete data;
         }

@@ -25,18 +25,13 @@ uint32_t DataFrame::getCommand() {
     return data[1] << 16 | data[2] << 8 | data[3];
 }
 
-coordinate* DataFrame::getGpsCoordinate() {
+Coordinate* DataFrame::getGpsCoordinate() {
     uint32_t command = getCommand();
     if (command != COMMAND_SHORT_GPS) {
         return nullptr;
     }
 
-    auto location = (coordinate*) malloc(sizeof(coordinate));
-    if (decode_gps(data + 5, location)) {
-        return location;
-    }
-
-    return nullptr;
+    return Coordinate::parse(data + 5);
 }
 
 std::string DataFrame::getRadio() {
