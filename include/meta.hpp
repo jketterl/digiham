@@ -7,17 +7,32 @@
 
 namespace Digiham {
 
+    class Serializer {
+        public:
+            virtual ~Serializer() = default;
+            virtual std::string serializeMetaData(std::map<std::string, std::string> metadata) = 0;
+    };
+
+    class StringSerializer: public Serializer {
+        public:
+            std::string serializeMetaData(std::map<std::string, std::string> metadata) override;
+    };
+
     class MetaWriter {
         public:
-            virtual ~MetaWriter() = default;
+            MetaWriter();
+            explicit MetaWriter(Serializer* serializer);
+            virtual ~MetaWriter();
             virtual void sendMetaData(std::map<std::string, std::string> metadata) = 0;
+            void setSerializer(Serializer* serializer);
         protected:
-            std::string serializeMetaData(std::map<std::string, std::string> metadata);
+            Serializer* serializer;
     };
 
     class FileMetaWriter: public MetaWriter {
         public:
             explicit FileMetaWriter(FILE* out);
+            FileMetaWriter(FILE* out, Serializer* serializer);
             ~FileMetaWriter() override;
             void sendMetaData(std::map<std::string, std::string> metadata) override;
         private:
@@ -26,6 +41,7 @@ namespace Digiham {
 
     class PipelineMetaWriter: public MetaWriter, public Csdr::Source<unsigned char> {
         public:
+            PipelineMetaWriter(Serializer* serializer);
             void sendMetaData(std::map<std::string, std::string> metadata) override;
     };
 

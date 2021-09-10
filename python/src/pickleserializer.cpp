@@ -1,11 +1,10 @@
-#include "picklewriter.hpp"
+#include "pickleserializer.hpp"
 
 #include <Python.h>
-#include <cstring>
 
 using namespace Digiham;
 
-void PickleWriter::sendMetaData(std::map<std::string, std::string> metadata) {
+std::string PickleSerializer::serializeMetaData(std::map<std::string, std::string> metadata) {
     // acquire GIL
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
@@ -58,14 +57,11 @@ void PickleWriter::sendMetaData(std::map<std::string, std::string> metadata) {
         throw std::runtime_error("failed to extract result bytes");
     }
 
-    if (writer->writeable() < (size_t) length) return;
-
-    std::memcpy(writer->getWritePointer(), bytes, length);
-    // no need to compensate for multi-byte types since we only extend Writer<unsigned char>
-    writer->advance(length);
-
+    std::string serialized(bytes, length);
     Py_DECREF(result);
 
     /* Release the thread. No Python API allowed beyond this point. */
     PyGILState_Release(gstate);
+
+    return serialized;
 }
