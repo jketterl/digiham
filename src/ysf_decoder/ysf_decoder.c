@@ -148,7 +148,7 @@ int get_synctype(uint8_t potential_sync[SYNC_SIZE]) {
 }
 
 void interleave_v2_voice_payload(uint8_t payload[7], uint8_t result[7]) {
-    for (int i = 0; i < 8; i++) result[i] = 0;
+    for (int i = 0; i < 7; i++) result[i] = 0;
     int input_bit = 0;
 
     for (input_bit = 0; input_bit < 49; input_bit++) {
