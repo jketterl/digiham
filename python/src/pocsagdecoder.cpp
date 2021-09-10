@@ -1,12 +1,13 @@
 #include "pocsagdecoder.hpp"
 #include "types.hpp"
+#include "pickleserializer.hpp"
 
 #include <digiham/pocsag_decoder.hpp>
 
 static int PocsagDecoder_init(PocsagDecoder* self, PyObject* args, PyObject* kwds) {
     self->inputFormat = FORMAT_CHAR;
     self->outputFormat = FORMAT_CHAR;
-    self->setModule(new Digiham::Pocsag::Decoder());
+    self->setModule(new Digiham::Pocsag::Decoder(new Digiham::PickleSerializer()));
 
     return 0;
 }

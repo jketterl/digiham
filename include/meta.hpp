@@ -41,7 +41,7 @@ namespace Digiham {
 
     class PipelineMetaWriter: public MetaWriter, public Csdr::Source<unsigned char> {
         public:
-            PipelineMetaWriter(Serializer* serializer);
+            explicit PipelineMetaWriter(Serializer* serializer);
             void sendMetaData(std::map<std::string, std::string> metadata) override;
     };
 

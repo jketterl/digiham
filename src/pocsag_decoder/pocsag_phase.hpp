@@ -2,6 +2,7 @@
 
 #include "phase.hpp"
 #include "message.hpp"
+#include "meta.hpp"
 
 #define SYNC_SIZE 32
 
@@ -22,14 +23,17 @@ namespace Digiham::Pocsag {
 
     class CodewordPhase: public Phase {
         public:
-            ~CodewordPhase();
+            ~CodewordPhase() override;
             int getRequiredData() override;
             Digiham::Phase* process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) override;
+            void setSerializer(Digiham::Serializer* serializer);
         private:
+            void writeMessage(Message* message);
             // we start after one sync has already been found
             int syncCount = 1;
             int codewordCounter = 0;
             Message* currentMessage = nullptr;
+            Serializer* serializer = nullptr;
     };
 
 }

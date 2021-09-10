@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include "meta.hpp"
+
 #include <csdr/writer.hpp>
 
 #define MAX_MESSAGE_LENGTH 80
@@ -11,7 +13,7 @@ namespace Digiham::Pocsag {
         public:
             Message(uint32_t address, unsigned char type);
             ~Message();
-            void serialize(Csdr::Writer<unsigned char>* writer);
+            void serialize(Digiham::Serializer* serializer, Csdr::Writer<unsigned char>* writer);
             void append(uint32_t data);
         private:
             uint32_t address;

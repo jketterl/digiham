@@ -42,7 +42,7 @@ Digiham::Phase *CodewordPhase::process(Csdr::Reader<unsigned char> *data, Csdr::
         } else {
             if (syncCount-- < 0) {
                 if (currentMessage != nullptr) {
-                    currentMessage->serialize(output);
+                    currentMessage->serialize(serializer, output);
                 }
                 return new SyncPhase();
             }
@@ -55,13 +55,13 @@ Digiham::Phase *CodewordPhase::process(Csdr::Reader<unsigned char> *data, Csdr::
         if (codeword != nullptr) {
             if (codeword->isIdle()) {
                 if (currentMessage != nullptr) {
-                    currentMessage->serialize(output);
+                    currentMessage->serialize(serializer, output);
                 }
                 delete currentMessage;
                 currentMessage = nullptr;
             } else if (codeword->isAddressCodeword()) {
                 if (currentMessage != nullptr) {
-                    currentMessage->serialize(output);
+                    currentMessage->serialize(serializer, output);
                 }
                 delete currentMessage;
                 currentMessage = nullptr;
@@ -89,4 +89,12 @@ Digiham::Phase *CodewordPhase::process(Csdr::Reader<unsigned char> *data, Csdr::
     }
 
     return this;
+}
+
+void CodewordPhase::setSerializer(Digiham::Serializer *serializer) {
+    this->serializer = serializer;
+}
+
+void CodewordPhase::writeMessage(Message *message) {
+
 }

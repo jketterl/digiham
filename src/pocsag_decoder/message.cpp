@@ -14,11 +14,11 @@ Message::~Message() {
     free(content);
 }
 
-void Message::serialize(Csdr::Writer<unsigned char> *writer) {
+void Message::serialize(Digiham::Serializer* serializer, Csdr::Writer<unsigned char>* writer) {
     if (pos == 0) return;
-    std::stringstream ss;
-    ss << "address:" << address << ";message:" << content << "\n";
-    std::string encoded = ss.str();
+    std::string encoded = serializer->serializeMetaData(
+        {{"address", std::to_string(address)}, {"message", content}}
+    );
     std::memcpy(writer->getWritePointer(), encoded.c_str(), encoded.length());
     writer->advance(encoded.length());
 }
