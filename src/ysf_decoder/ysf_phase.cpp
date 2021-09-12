@@ -238,7 +238,7 @@ void FramePhase::decodeTribits(uint8_t* input, uint8_t* output, uint8_t num) {
 }
 
 void FramePhase::interleaveV2VoicePayload(uint8_t payload[7], uint8_t result[7]) {
-    for (int i = 0; i < 8; i++) result[i] = 0;
+    for (int i = 0; i < 7; i++) result[i] = 0;
 
     for (int input_bit = 0; input_bit < 49; input_bit++) {
         int input_position = input_bit / 8;
