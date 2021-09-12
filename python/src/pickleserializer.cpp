@@ -19,11 +19,12 @@ std::string PickleSerializer::serializeMetaData(std::map<std::string, std::strin
     }
 
     for (auto entry: metadata) {
-        PyObject* value = PyUnicode_FromStringAndSize(entry.second.c_str(), entry.second.length());
+        PyObject* value = PyUnicode_DecodeUtf8(entry.second.c_str(), entry.second.length(), "replace");
         if (value == NULL) {
-            Py_DECREF(pickle);
-            Py_DECREF(dict);
-            throw std::runtime_error("failed to create python string object");
+            if (PyErr_Occurred()) {
+                PyErr_PrintEx(0);
+            }
+            continue;
         }
         if (PyDict_SetItemString(dict, entry.first.c_str(), value) == -1) {
             Py_DECREF(pickle);

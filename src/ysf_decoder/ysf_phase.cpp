@@ -1,5 +1,6 @@
 #include "ysf_phase.hpp"
 #include "ysf_meta.hpp"
+#include "charset.hpp"
 
 #include <cstring>
 
@@ -142,14 +143,14 @@ Digiham::Phase* FramePhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wri
                 unsigned char* dch = decodeHeaderDataChannel(data->getReadPointer());
                 if (dch != nullptr) {
                     // CSD1 - contains Dest and Src fields
-                    c->setDestination(treatYsfString(std::string((char*) dch, 10)));
-                    c->setSource(treatYsfString(std::string((char*) dch + 10, 10)));
+                    c->setDestination(treatYsfString((char*) dch, 10));
+                    c->setSource(treatYsfString((char*) dch + 10, 10));
                     free(dch);
                 }
                 dch = decodeHeaderDataChannel(data->getReadPointer() + 36);
                 if (dch != nullptr) {
-                    c->setDown(treatYsfString(std::string((char*) dch, 10)));
-                    c->setUp(treatYsfString(std::string((char*) dch + 10, 10)));
+                    c->setDown(treatYsfString((char*) dch, 10));
+                    c->setUp(treatYsfString((char*) dch + 10, 10));
                     free(dch);
                 }
                 c->release();
@@ -266,20 +267,19 @@ void FramePhase::decodeV2DataChannel(unsigned char *in, unsigned char frameNumbe
     decode_whitening(dch_whitened, dch, 100);
 
     if (frameNumber < 6) {
-        std::string contents((char*) dch, 10);
         auto collector = (MetaCollector*) meta;
         switch (frameNumber) {
             case 0:
-                collector->setDestination(treatYsfString(contents));
+                collector->setDestination(treatYsfString((char*) dch, 10));
                 break;
             case 1:
-                collector->setSource(treatYsfString(contents));
+                collector->setSource(treatYsfString((char*) dch, 10));
                 break;
             case 2:
-                collector->setDown(treatYsfString(contents));
+                collector->setDown(treatYsfString((char*) dch, 10));
                 break;
             case 3:
-                collector->setUp(treatYsfString(contents));
+                collector->setUp(treatYsfString((char*) dch, 10));
                 break;
             default:
                 // TODO: 4 contains REM1 & REM2
@@ -348,9 +348,13 @@ unsigned char *FramePhase::decodeHeaderDataChannel(unsigned char *in) {
     return dch;
 }
 
-std::string FramePhase::treatYsfString(const std::string& input) {
-    auto end = input.find_last_not_of("\n ");
-    if (end == std::string::npos) return  "";
-    // TODO convert to UTF-8
-    return input.substr(0, end + 1);
+std::string FramePhase::treatYsfString(const char* input, size_t length) {
+#pragma unroll(2)
+    for (char c : {'\n', ' '}) {
+        const char* end = (char*) memchr(input, c, length);
+        if (end != nullptr) {
+            length = end - input;
+        }
+    }
+    return Digiham::Converter::convertToUtf8(input, length);
 }

@@ -1,5 +1,7 @@
 #include "dstar_phase.hpp"
 #include "crc.hpp"
+#include "charset.hpp"
+
 #include <iostream>
 #include <cstring>
 #include <sstream>
@@ -199,7 +201,7 @@ void VoicePhase::collectDataFrame(unsigned char* data) {
 
 void VoicePhase::parseFrameData() {
     if (messageBlocks == 0x0F) {
-        ((MetaCollector*) meta)->setMessage(std::string((char*)message, 20));
+        ((MetaCollector*) meta)->setMessage(Converter::convertToUtf8((char*)message, 20));
     }
     if (headerCount == 41) {
         auto headerData = (unsigned char*) malloc(41);

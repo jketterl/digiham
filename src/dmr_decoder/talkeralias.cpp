@@ -1,3 +1,6 @@
+#include "talkeralias.hpp"
+#include "charset.hpp"
+
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -5,7 +8,6 @@
 #include <locale>
 #include <cassert>
 #include <sstream>
-#include "talkeralias.hpp"
 
 using namespace Digiham::Dmr;
 
@@ -77,6 +79,9 @@ std::string TalkerAliasCollector::getContents() {
             break;
         }
         case TALKER_ALIAS_FORMAT_8BIT:
+            // first byte unusable
+            result = Converter::convertToUtf8((char*) data + 1, bytes - 1);
+            break;
         case TALKER_ALIAS_FORMAT_UTF8:
             // first byte unusable
             result = std::string((char*) data + 1, bytes - 1);

@@ -43,7 +43,7 @@ add_library(digiham SHARED
     $<TARGET_OBJECTS:digiham_ysf_decoder>
     $<TARGET_OBJECTS:digiham_pocsag>
 )
-target_link_libraries(digiham Csdr::csdr++ CodecServer::codecserver)
+target_link_libraries(digiham Csdr::csdr++ CodecServer::codecserver ICU::uc)
 set_target_properties(digiham PROPERTIES VERSION ${PROJECT_VERSION})
 file(GLOB DIGIHAM_HEADERS "${PROJECT_SOURCE_DIR}/include/*.hpp" "${PROJECT_SOURCE_DIR}/include/*.h")
 set_target_properties(digiham PROPERTIES PUBLIC_HEADER "${DIGIHAM_HEADERS}")

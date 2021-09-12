@@ -40,7 +40,7 @@ namespace Digiham::Ysf {
             void decodeV2DataChannel(unsigned char* in, unsigned char frameNumer);
             void decodeFRVoicePayload(unsigned char* in, unsigned char* out);
             unsigned char* decodeHeaderDataChannel(unsigned char* in);
-            std::string treatYsfString(const std::string& input);
+            std::string treatYsfString(const char* input, size_t length);
 
             const uint8_t tribit_majority_table[8] = { 0, 0, 0, 1, 0, 1, 1, 1 };
             const uint8_t v2_voice_mapping[49] = {

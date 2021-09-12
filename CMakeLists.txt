@@ -16,6 +16,8 @@ find_package(CodecServer REQUIRED)
 
 find_package(Csdr 0.18 REQUIRED)
 
+find_package(ICU 57.0 COMPONENTS uc REQUIRED)
+
 SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
 SET(CMAKE_C_FLAGS_RELEASE "-O3")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -O3")

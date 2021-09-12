@@ -1,5 +1,6 @@
 #include "header.hpp"
 #include "scrambler.hpp"
+#include "charset.hpp"
 #include "crc.hpp"
 #include <cstring>
 #include <sstream>
@@ -156,21 +157,21 @@ std::string Header::rtrim(std::string input) {
 }
 
 std::string Header::getDestinationRepeater() {
-    return rtrim(std::string((char*) data + 3, 8));
+    return rtrim(Converter::convertToUtf8((char*) data + 3, 8));
 }
 
 std::string Header::getDepartureRepeater() {
-    return rtrim(std::string((char*) data + 11, 8));
+    return rtrim(Converter::convertToUtf8((char*) data + 11, 8));
 }
 
 std::string Header::getCompanion() {
-    return rtrim(std::string((char*) data + 19, 8));
+    return rtrim(Converter::convertToUtf8((char*) data + 19, 8));
 }
 
 std::string Header::getOwnCallsign() {
     std::stringstream ss;
-    ss << rtrim(std::string((char*) data + 27, 8));
-    std::string suffix = rtrim(std::string((char*) data + 35, 4));
+    ss << rtrim(Converter::convertToUtf8((char*) data + 27, 8));
+    std::string suffix = rtrim(Converter::convertToUtf8((char*) data + 35, 4));
     if (suffix != "") {
         ss << "/" << suffix;
     }
