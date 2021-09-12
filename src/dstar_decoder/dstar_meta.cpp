@@ -2,6 +2,10 @@
 
 using namespace Digiham::DStar;
 
+MetaCollector::~MetaCollector() {
+    delete coord;
+}
+
 void MetaCollector::setSync(std::string sync) {
     if (sync == this->sync) return;
     this->sync = sync;
@@ -58,11 +62,16 @@ void MetaCollector::setDPRS(std::string dprs) {
     sendMetaData();
 }
 
-void MetaCollector::setGPS(float lat, float lon) {
-    if (gpsSet && this->lat == lat && this->lon == lon) return;
-    this->lat = lat;
-    this->lon = lon;
-    gpsSet = true;
+void MetaCollector::setGPS(Coordinate* coord) {
+    if (this->coord == coord || (this->coord != nullptr && coord != nullptr && *this->coord == *coord)) {
+        delete coord;
+        return;
+    }
+    // prevent race conditions
+    auto old = this->coord;
+    this->coord = coord;
+    delete old;
+    sendMetaData();
 }
 
 void MetaCollector::reset() {
@@ -74,8 +83,7 @@ void MetaCollector::reset() {
     setOurCall("");
     setYourCall("");
     setDPRS("");
-    setGPS(0, 0);
-    gpsSet = false;
+    setGPS(nullptr);
     release();
 }
 
@@ -114,9 +122,9 @@ std::map<std::string, std::string> MetaCollector::collect() {
         metadata["dprs"] = dprs;
     }
 
-    if (gpsSet) {
-        metadata["lat"] = std::to_string(lat);
-        metadata["lon"] = std::to_string(lon);
+    if (coord != nullptr) {
+        metadata["lat"] = std::to_string(coord->lat);
+        metadata["lon"] = std::to_string(coord->lon);
     }
 
     return metadata;

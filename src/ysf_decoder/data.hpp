@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "gps.hpp"
+#include "coordinate.hpp"
 
 #define COMMAND_NULL0_GPS     0x22615f
 #define COMMAND_SHORT_GPS     0x22625f

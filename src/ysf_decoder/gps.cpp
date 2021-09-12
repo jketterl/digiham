@@ -2,9 +2,7 @@
 
 using namespace Digiham::Ysf;
 
-Coordinate::Coordinate(float lat, float lon): lat(lat), lon(lon) {}
-
-Coordinate* Coordinate::parse(const uint8_t* data) {
+Digiham::Coordinate* Gps::parse(const uint8_t* data) {
     if ((data[0] & 0x0F) > 9) return nullptr;
     if ((data[1] & 0x0F) > 9) return nullptr;
     if ((data[2] & 0x0F) > 9) return nullptr;
@@ -80,9 +78,5 @@ Coordinate* Coordinate::parse(const uint8_t* data) {
     if (lat > 90 || lat < -90) return nullptr;
     if (lon > 180 || lon < -180) return nullptr;
 
-    return new Coordinate(lat, lon);
-}
-
-bool Coordinate::operator==(const Coordinate &other) {
-    return other.lat == lat && other.lon == lon;
+    return new Digiham::Coordinate(lat, lon);
 }

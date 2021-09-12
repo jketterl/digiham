@@ -2,12 +2,14 @@
 
 #include "header.hpp"
 #include "meta.hpp"
+#include "coordinate.hpp"
 #include <string>
 
 namespace Digiham::DStar {
 
     class MetaCollector: public Digiham::MetaCollector {
         public:
+            ~MetaCollector() override;
             void setSync(std::string sync);
             void setFromHeader(Header* header);
             void setMessage(std::string message);
@@ -16,7 +18,7 @@ namespace Digiham::DStar {
             void setOurCall(std::string ourCall);
             void setYourCall(std::string yourCall);
             void setDPRS(std::string dprs);
-            void setGPS(float lat, float lon);
+            void setGPS(Coordinate* coordinate);
             void reset();
         protected:
             std::string getProtocol() override;
@@ -29,9 +31,7 @@ namespace Digiham::DStar {
             std::string ourCall;
             std::string yourCall;
             std::string dprs;
-            float lat;
-            float lon;
-            bool gpsSet = false;
+            Coordinate* coord = nullptr;
     };
 
 }

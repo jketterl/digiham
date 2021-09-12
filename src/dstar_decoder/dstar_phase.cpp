@@ -1,6 +1,7 @@
 #include "dstar_phase.hpp"
 #include "crc.hpp"
 #include "charset.hpp"
+#include "coordinate.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -283,6 +284,6 @@ void VoicePhase::parseNMEAData(const std::string& input) {
         lon += (lon_combined - lon * 100) / 60;
         if (fields[5] == "W") lon *= -1;
 
-        ((MetaCollector*) meta)->setGPS(lat, lon);
+        ((MetaCollector*) meta)->setGPS(new Coordinate(lat, lon));
     }
 }
