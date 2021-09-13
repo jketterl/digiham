@@ -210,8 +210,8 @@ void MbeSynthesizer::readLoop() {
     while (run) {
         FD_ZERO(&read_fds);
         FD_SET(sock, &read_fds);
-        tv.tv_sec = 10;
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        tv.tv_usec = 1E5;
 
         rc = select(nfds, &read_fds, NULL, NULL, &tv);
         if (rc == -1) {
