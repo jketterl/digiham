@@ -134,7 +134,13 @@ static int MbeSynthesizer_init(MbeSynthesizer* self, PyObject* args, PyObject* k
                 serverString = serverString.substr(0, pos);
             }
 
-            self->setModule(new Digiham::Mbe::MbeSynthesizer(serverString, port, ambeMode));
+            // creating an mbesysnthesizer module potentially waits for network traffic, so we allow other threads in the meantime
+
+            Csdr::UntypedModule* module;
+            Py_BEGIN_ALLOW_THREADS
+            module = new Digiham::Mbe::MbeSynthesizer(serverString, port, ambeMode);
+            Py_END_ALLOW_THREADS
+            self->setModule(module);
         }
     } catch (const Digiham::Mbe::ConnectionError& e) {
         PyErr_SetString(PyExc_ConnectionError, e.what());
