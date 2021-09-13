@@ -94,7 +94,6 @@ MbeSynthesizer::~MbeSynthesizer() {
     run = false;
     if (connection != nullptr) {
         std::unique_lock<std::mutex> lck(receiveMutex);
-        connection->close();
         delete connection;
         connection = nullptr;
     }
@@ -211,7 +210,7 @@ void MbeSynthesizer::readLoop() {
     while (run) {
         FD_ZERO(&read_fds);
         FD_SET(sock, &read_fds);
-        tv.tv_sec = 1;
+        tv.tv_sec = 10;
         tv.tv_usec = 0;
 
         rc = select(nfds, &read_fds, NULL, NULL, &tv);
