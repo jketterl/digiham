@@ -19,7 +19,7 @@ std::string PickleSerializer::serializeMetaData(std::map<std::string, std::strin
     }
 
     for (auto entry: metadata) {
-        PyObject* value = PyUnicode_DecodeUtf8(entry.second.c_str(), entry.second.length(), "replace");
+        PyObject* value = PyUnicode_DecodeUTF8(entry.second.c_str(), entry.second.length(), "replace");
         if (value == NULL) {
             if (PyErr_Occurred()) {
                 PyErr_PrintEx(0);
