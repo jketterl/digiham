@@ -56,6 +56,7 @@ namespace Digiham::Dmr {
             TalkerAliasCollector* talkerAliasCollector[2];
             int activeSlot = -1;
             unsigned char slotFilter = 3;
+            unsigned char superframeCounter[2] = {0, 0};
     };
 
 }

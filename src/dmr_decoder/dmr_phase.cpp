@@ -62,36 +62,6 @@ int FramePhase::getRequiredData() {
 }
 
 Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Writer<unsigned char> *output) {
-    Emb* emb = nullptr;
-
-    int syncType = getSyncType(data->getReadPointer() + syncOffset);
-    if (syncType > 0) {
-        // increase sync count, cap at 5
-        if (++syncCount > 5) syncCount = 5;
-    } else {
-        uint16_t emb_data = 0;
-
-        // try to decode as embedded signalling
-        for (int i = 0; i < 2; i++) {
-            unsigned int offset = syncOffset + i * 20;
-            unsigned char* raw = data->getReadPointer() + offset;
-            for (int k = 0; k < 4; k++) {
-                emb_data = (emb_data << 2) | raw[k];
-            }
-        }
-        emb = Emb::parse(emb_data);
-        if (emb != nullptr) {
-            // if the EMB decoded correctly, that counts towards the sync :)
-            if (++syncCount > 5) syncCount = 5;
-        } else {
-            // no sync and no EMB, decrease sync counter
-            if (--syncCount < 0) {
-                ((MetaCollector*) meta)->reset();
-                return new SyncPhase();
-            }
-        }
-    }
-
     Cach* cach = Cach::parse(data->getReadPointer());
     // slots should always be alternating, but may be overridden by 100% correct tact
     // this is our assumption of what the next slot should be, based on the last slot:
@@ -125,8 +95,14 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
         slot = next;
     }
 
+    delete cach;
+
     if (slot != -1) {
+        int syncType = getSyncType(data->getReadPointer() + syncOffset);
         if (syncType > 0) {
+            // increase sync count, cap at 5
+            if (++syncCount > 5) syncCount = 5;
+
             // trigger a softreset only when we are dropping out of voice
             bool softReset = syncTypes[slot] == SYNCTYPE_VOICE && syncType != syncTypes[slot];
             syncTypes[slot] = syncType;
@@ -134,49 +110,76 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                 s->setSync(syncType);
                 if (softReset) s->softReset();
             });
-        }
+            superframeCounter[slot] = 0;
+        } else if (syncTypes[slot] == SYNCTYPE_VOICE && superframeCounter[slot] < 5) {
+            // voice mode has superframes consisting of 6 normal frames
+            // the first frame is expected to have a normal sync (covered above)
+            // the remaining five contain embedded data
+            superframeCounter[slot]++;
 
-        if (emb != nullptr) {
-            unsigned char embedded_data[4] = {0};
-            unsigned char* emb_raw = data->getReadPointer() + syncOffset + 4;
-            for (int i = 0; i < 16; i++) {
-                embedded_data[i / 4] |= emb_raw[i] << (6 - (i % 4) * 2);
-            }
-            auto collector = embCollectors[slot];
-            switch (emb->getLcss()) {
-                case LCSS_SINGLE:
-                    // RC data. no idea what to do with that yet.
-                    break;
+            uint16_t emb_data = 0;
 
-                case LCSS_START:
-                    collector->reset();
-                    // break intentionally omitted
-
-                case LCSS_CONTINUATION:
-                    collector->collect(embedded_data);
-                    break;
-
-                case LCSS_STOP: {
-                    collector->collect(embedded_data);
-                    Lc* lc = collector->getLc();
-                    if (lc != nullptr) {
-                        handleLc(lc);
-                        delete lc;
-                    }
-                    collector->reset();
-                    break;
+            // try to decode as embedded signalling
+            for (int i = 0; i < 2; i++) {
+                unsigned int offset = syncOffset + i * 20;
+                unsigned char* raw = data->getReadPointer() + offset;
+                for (int k = 0; k < 4; k++) {
+                    emb_data = (emb_data << 2) | raw[k];
                 }
             }
 
-            if (talkerAliasCollector[slot]->isComplete()) {
-                std::string alias = talkerAliasCollector[slot]->getContents();
-                // trim off any 0-chars (YSF bridging does this)
-                auto end = alias.find_last_not_of('\0');
-                alias = end == std::string::npos ? "" : alias.substr(0, end + 1);
+            Emb* emb = Emb::parse(emb_data);
+            if (emb != nullptr) {
+                // if the EMB decoded correctly, that counts towards the sync :)
+                if (++syncCount > 5) syncCount = 5;
 
-                ((MetaCollector*) meta)->withSlot(slot, [alias] (Slot* s) {
-                    s->setTalkerAlias(alias);
-                });
+                // parse actual embedded data
+                unsigned char embedded_data[4] = {0};
+                unsigned char* emb_raw = data->getReadPointer() + syncOffset + 4;
+                for (int i = 0; i < 16; i++) {
+                    embedded_data[i / 4] |= emb_raw[i] << (6 - (i % 4) * 2);
+                }
+                auto collector = embCollectors[slot];
+                switch (emb->getLcss()) {
+                    case LCSS_SINGLE:
+                        // RC data. no idea what to do with that yet.
+                        break;
+
+                    case LCSS_START:
+                        collector->reset();
+                        // break intentionally omitted
+
+                    case LCSS_CONTINUATION:
+                        collector->collect(embedded_data);
+                        break;
+
+                    case LCSS_STOP: {
+                        collector->collect(embedded_data);
+                        Lc* lc = collector->getLc();
+                        if (lc != nullptr) {
+                            handleLc(lc);
+                            delete lc;
+                        }
+                        collector->reset();
+                        break;
+                    }
+                }
+
+                delete emb;
+            } else {
+                // no sync and no EMB, decrease sync counter
+                if (--syncCount < 0) {
+                    ((MetaCollector*) meta)->reset();
+                    return new SyncPhase();
+                }
+            }
+        } else {
+            // even if we didn't find the sync, we should still resset the superframe counter
+            superframeCounter[slot] = 0;
+            // sync expected, but not found, decrease sync counter
+            if (--syncCount < 0) {
+                ((MetaCollector*) meta)->reset();
+                return new SyncPhase();
             }
         }
 
@@ -273,9 +276,6 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
         }
     }
 
-    delete cach;
-    delete emb;
-
     data->advance(FRAME_SIZE);
     return this;
 }
@@ -293,6 +293,16 @@ void FramePhase::handleLc(Lc *lc) {
         case LC_TALKER_ALIAS_BLK3:
             // the actual opcodes are numbered consecutively, so this math makes sense
             talkerAliasCollector[slot]->setBlock(opcode - LC_TALKER_ALIAS_HDR, lc->getData());
+            if (talkerAliasCollector[slot]->isComplete()) {
+                std::string alias = talkerAliasCollector[slot]->getContents();
+                // trim off any 0-chars (YSF bridging does this)
+                auto end = alias.find_last_not_of('\0');
+                alias = end == std::string::npos ? "" : alias.substr(0, end + 1);
+
+                ((MetaCollector*) meta)->withSlot(slot, [alias] (Slot* s) {
+                    s->setTalkerAlias(alias);
+                });
+            }
             break;
         default:
             std::cerr << "unknown opcode: " << +opcode << " from feature set id: " << +lc->getFeatureSetId() << "\n";
