@@ -172,6 +172,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
             } else {
                 // no sync and no EMB, decrease sync counter
                 if (--slotSyncCount[slot] < 0) {
+                    slotSyncCount[slot] = 0;
                     syncTypes[slot] = -1;
                     ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) {
                         s->reset();
@@ -188,6 +189,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
             superframeCounter[slot] = 0;
             // sync expected, but not found, decrease sync counter
             if (--slotSyncCount[slot] < 0) {
+                slotSyncCount[slot] = 0;
                 syncTypes[slot] = -1;
                 ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) {
                     s->reset();
