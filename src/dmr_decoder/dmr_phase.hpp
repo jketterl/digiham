@@ -52,6 +52,7 @@ namespace Digiham::Dmr {
             int slot = -1;
             int slotStability = 0;
             int syncTypes[2] = {-1, -1};
+            int slotSyncCount[2] = {0, 0};
             EmbeddedCollector* embCollectors[2];
             TalkerAliasCollector* talkerAliasCollector[2];
             int activeSlot = -1;

@@ -102,6 +102,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
         if (syncType > 0) {
             // increase sync count, cap at 5
             if (++syncCount > 5) syncCount = 5;
+            if (++slotSyncCount[slot] > 5) slotSyncCount[slot] = 5;
 
             // trigger a softreset only when we are dropping out of voice
             bool softReset = syncTypes[slot] == SYNCTYPE_VOICE && syncType != syncTypes[slot];
@@ -111,6 +112,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                 if (softReset) s->softReset();
             });
             superframeCounter[slot] = 0;
+            embCollectors[slot]->reset();
         } else if (syncTypes[slot] == SYNCTYPE_VOICE && superframeCounter[slot] < 5) {
             // voice mode has superframes consisting of 6 normal frames
             // the first frame is expected to have a normal sync (covered above)
@@ -132,6 +134,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
             if (emb != nullptr) {
                 // if the EMB decoded correctly, that counts towards the sync :)
                 if (++syncCount > 5) syncCount = 5;
+                if (++slotSyncCount[slot] > 5) slotSyncCount[slot] = 5;
 
                 // parse actual embedded data
                 unsigned char embedded_data[4] = {0};
@@ -168,15 +171,29 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
                 delete emb;
             } else {
                 // no sync and no EMB, decrease sync counter
+                if (--slotSyncCount[slot] < 0) {
+                    syncTypes[slot] = -1;
+                    ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) {
+                        s->reset();
+                    });
+                    if (activeSlot == slot) activeSlot = -1;
+                }
                 if (--syncCount < 0) {
                     ((MetaCollector*) meta)->reset();
                     return new SyncPhase();
                 }
             }
         } else {
-            // even if we didn't find the sync, we should still resset the superframe counter
+            // even if we didn't find the sync, we should still reset the superframe counter
             superframeCounter[slot] = 0;
             // sync expected, but not found, decrease sync counter
+            if (--slotSyncCount[slot] < 0) {
+                syncTypes[slot] = -1;
+                ((MetaCollector*) meta)->withSlot(slot, [] (Slot* s) {
+                    s->reset();
+                });
+                if (activeSlot == slot) activeSlot = -1;
+            }
             if (--syncCount < 0) {
                 ((MetaCollector*) meta)->reset();
                 return new SyncPhase();
