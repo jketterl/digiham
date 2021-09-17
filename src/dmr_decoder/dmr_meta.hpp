@@ -2,6 +2,7 @@
 
 #include "meta.hpp"
 #include "lc.hpp"
+#include "coordinate.hpp"
 
 #include <map>
 #include <string>
@@ -11,12 +12,14 @@ namespace Digiham::Dmr {
 
     class Slot {
         public:
+            ~Slot();
             void setSync(int sync);
             void setType(int type);
             void setSource(uint32_t source);
             void setTarget(uint32_t target);
             void setFromLc(Lc* lc);
             void setTalkerAlias(std::string alias);
+            void setCoordinate(Digiham::Coordinate* coordinate);
             void reset();
             void softReset();
             bool isDirty();
@@ -32,6 +35,7 @@ namespace Digiham::Dmr {
             uint32_t source;
             uint32_t target;
             std::string talkerAlias;
+            Digiham::Coordinate* coordinate = nullptr;
     };
 
     class MetaCollector: public Digiham::MetaCollector {

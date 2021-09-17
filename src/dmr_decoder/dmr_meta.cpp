@@ -4,6 +4,10 @@
 
 using namespace Digiham::Dmr;
 
+Slot::~Slot() {
+    delete coordinate;
+}
+
 void Slot::setSync(int sync) {
     if (this->sync == sync) return;
     this->sync = sync;
@@ -49,6 +53,18 @@ void Slot::setTalkerAlias(std::string alias) {
     setDirty();
 }
 
+void Slot::setCoordinate(Digiham::Coordinate *coord) {
+    if (coordinate == coord || (coordinate != nullptr && coord != nullptr && *coordinate == *coord)) {
+        delete coord;
+        return;
+    }
+    // prevent race conditions
+    auto old = coordinate;
+    coordinate = coord;
+    delete old;
+    setDirty();
+}
+
 bool Slot::isDirty() {
     return dirty;
 }
@@ -66,6 +82,7 @@ void Slot::softReset() {
     setSource(0);
     setTarget(0);
     setTalkerAlias("");
+    setCoordinate(nullptr);
 }
 
 void Slot::reset() {
@@ -89,6 +106,10 @@ std::map<std::string, std::string> Slot::collect() {
     }
     if (!talkerAlias.empty()) {
         result["talkeralias"] = talkerAlias;
+    }
+    if (coordinate != nullptr) {
+        result["lat"] = std::to_string(coordinate->lat);
+        result["lon"] = std::to_string(coordinate->lon);
     }
     return result;
 }

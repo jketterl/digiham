@@ -4,6 +4,7 @@
 #include "emb.hpp"
 #include "cach.hpp"
 #include "slottype.hpp"
+#include "gps.hpp"
 
 extern "C" {
 #include "hamming_distance.h"
@@ -323,6 +324,13 @@ void FramePhase::handleLc(Lc *lc) {
                 });
             }
             break;
+        case LC_GPS_INFO: {
+            Coordinate* coord = Gps::parse(lc->getData());
+            ((MetaCollector*) meta)->withSlot(slot, [coord] (Slot* s) {
+                s->setCoordinate(coord);
+            });
+            break;
+        }
         default:
             std::cerr << "unknown opcode: " << +opcode << " from feature set id: " << +lc->getFeatureSetId() << "\n";
             break;
