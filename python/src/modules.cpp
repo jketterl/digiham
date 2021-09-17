@@ -15,6 +15,8 @@
 #include "ysfdecoder.hpp"
 #include "pocsagdecoder.hpp"
 
+#include <digiham/version.hpp>
+
 static PyModuleDef pycsdrmodule = {
     PyModuleDef_HEAD_INIT,
     .m_name = "digiham.modules",
@@ -122,6 +124,10 @@ PyInit_modules(void) {
     PyModule_AddObject(m, "YsfDecoder", YsfDecoderType);
 
     PyModule_AddObject(m, "PocsagDecoder", PocsagDecoderType);
+
+    PyObject* version = PyUnicode_FromStringAndSize(Digiham::version.c_str(), Digiham::version.length());
+    if (version == NULL) return NULL;
+    PyModule_AddObject(m, "version", version);
 
     return m;
 }

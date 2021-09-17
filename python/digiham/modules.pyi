@@ -1,6 +1,8 @@
 from pycsdr.modules import Module, Writer
 from digiham.ambe import Mode
 
+version: str = ...
+
 
 class DcBlock(Module):
     def __init__(self):
