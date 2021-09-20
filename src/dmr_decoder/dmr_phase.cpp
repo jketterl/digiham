@@ -188,6 +188,7 @@ Digiham::Phase *FramePhase::process(Csdr::Reader<unsigned char> *data, Csdr::Wri
         } else {
             // even if we didn't find the sync, we should still reset the superframe counter
             superframeCounter[slot] = 0;
+            embCollectors[slot]->reset();
             // sync expected, but not found, decrease sync counter
             if (--slotSyncCount[slot] < 0) {
                 slotSyncCount[slot] = 0;
