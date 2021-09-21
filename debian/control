@@ -31,6 +31,6 @@ Description: Tools for decoding digital ham radio communication
 
 Package: python3-digiham
 Architecture: any
-Depends: libdigiham (=${binary:Version}), pycsdr(>= 0.18), ${shlibs:Depends}, ${misc:Depends}
+Depends: libdigiham (=${binary:Version}), pycsdr (>= 0.18), ${shlibs:Depends}, ${misc:Depends}
 Description: Python bindings for the digiham library
  Offers a python interface to the various decoders included in digiham
