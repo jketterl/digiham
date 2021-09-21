@@ -4,6 +4,10 @@
 
 using namespace Digiham::Dmr;
 
+const unsigned char Cach::tact_positions[7] = { 0, 4, 8, 12, 14, 18, 22 };
+
+const unsigned char Cach::payload_positions[17] = { 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 15, 16, 17, 19, 20, 21, 23 };
+
 Cach* Cach::parse(const unsigned char *raw) {
     unsigned char tact = 0;
     for (int i = 0; i < 7; i++) {
