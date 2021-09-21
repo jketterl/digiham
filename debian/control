@@ -3,7 +3,7 @@ Maintainer: Jakob Ketterl <jakob.ketterl@gmx.de>
 Section: hamradio
 Priority: optional
 Standards-Version: 4.2.0
-Build-Depends: debhelper (>= 11), cmake (>= 3), libcodecserver-dev, libicu-dev
+Build-Depends: debhelper (>= 11), dh-python, python3-all (>= 3.5), libpython3-dev (>= 3.5), python3-setuptools, cmake (>= 3), libcodecserver-dev, libicu-dev
 Vcs-Browser: https://github.com/jketterl/digiham
 Vcs-Git: https://github.com/jketterl/digiham.git
 
@@ -28,3 +28,9 @@ Description: Tools for decoding digital ham radio communication
  Simple set of command-line tools that is intended to be used to decode
  digital modulations used by ham radio operators. The main focus is on digital
  voice modes.
+
+Package: python3-digiham
+Architecture: any
+Depends: libdigiham (=${binary:Version}), pycsdr(>= 0.18), ${shlibs:Depends}, ${misc:Depends}
+Description: Python bindings for the digiham library
+ Offers a python interface to the various decoders included in digiham
