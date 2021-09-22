@@ -1,5 +1,8 @@
 digiham (0.6.0) UNRELEASED; urgency=low
 
+  * rewrite all available decoders as csdr modules, making them available in
+    libdigiham
+
  -- Jakob Ketterl <jakob.ketterl@gmx.de>  Mon, 02 Aug 2021 19:43:00 +0000
 
 digiham (0.5.0) buster hirsute; urgency=low
