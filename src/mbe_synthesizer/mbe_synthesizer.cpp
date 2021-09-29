@@ -139,8 +139,6 @@ void MbeSynthesizer::handshake() {
     message->UnpackTo(&handshake);
     delete message;
 
-    std::cerr << "received handshake from " << handshake.servername() << "\n";
-
     if (!connection->isCompatible(handshake.serverversion())) {
         throw ConnectionError("server version mismatch");
     }

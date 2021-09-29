@@ -51,14 +51,10 @@ void Facch1::inflate(unsigned char* input, unsigned char* output) {
     memset(output, 0, 24);
     int pos = 0;
     for (int i = 0; i < 192; i++) {
-        //std::cerr << "filling " << +i;
         bool x = 0;
         if ((i - 1) % 4 != 0) {
-            //std::cerr << " from pos " << +pos << "\n";
             x = (input[pos / 2] >> (1 - pos % 2)) & 1;
             pos++;
-        } else {
-            //std::cerr << " with 0\n";
         }
         output[i / 8] |= x << (7 - i % 8);
     }
@@ -76,6 +72,5 @@ bool Facch1::check_crc(unsigned char* in) {
     }
 
     uint16_t to_check = (((uint16_t) in[10]) << 4) | (in[11] >> 4);
-    //std::cerr << "CRC result: " << +crc << "; should be: " << +to_check << "\n";
     return to_check == crc;
 }

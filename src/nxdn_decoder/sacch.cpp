@@ -57,14 +57,10 @@ void Sacch::inflate(unsigned char* input, unsigned char* output) {
     memset(output, 0, 9);
     int pos = 0;
     for (int i = 0; i < 72; i++) {
-        //std::cerr << "filling " << +i;
         bool x = 0;
         if ((i + 1) % 6 != 0) {
-            //std::cerr << " from pos " << +pos << "\n";
             x = (input[pos / 2] >> (1 - pos % 2)) & 1;
             pos++;
-        } else {
-            //std::cerr << " with 0\n";
         }
         output[i / 8] |= x << (7 - i % 8);
     }
@@ -83,7 +79,6 @@ bool Sacch::check_crc(unsigned char* in) {
     }
 
     uint8_t to_check = in[3] & 0b00111111;
-    //std::cerr << "CRC result: " << +crc << "; should be: " << +to_check << "\n";
     return to_check == crc;
 }
 

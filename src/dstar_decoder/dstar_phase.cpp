@@ -15,8 +15,6 @@ extern "C" {
 using namespace Digiham::DStar;
 
 Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writer<unsigned char>* output) {
-    //std::cerr << "scanning ringbuffer at " << read_pos << "\n";
-
     uint8_t* potential_sync = data->getReadPointer();
 
     if (hamming_distance(potential_sync, (uint8_t*) header_sync, SYNC_SIZE) <= 2) {
@@ -25,7 +23,6 @@ Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writ
     }
 
     if (hamming_distance(potential_sync, (uint8_t*) voice_sync, SYNC_SIZE) <= 1) {
-        std::cerr << "found a voice sync\n";
         data->advance(SYNC_SIZE);
         return new VoicePhase(0);
     }
@@ -44,8 +41,6 @@ Digiham::Phase* HeaderPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
         data->advance(1);
         return new SyncPhase();
     }
-
-    std::cerr << "found header: " << header->toString() << "\n";
 
     data->advance(Header::bits);
 
@@ -99,7 +94,6 @@ Digiham::Phase* VoicePhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wri
         hamming_distance(data_frame, ((uint8_t*) terminator) + 24, TERMINATOR_SIZE - 24) <= 1
     ) {
         // move another 24 since it's clear that this is all used up now
-        std::cerr << "terminator frame received, ending voice mode\n";
         data->advance(24);
         ((MetaCollector*) meta)->reset();
         return new SyncPhase();
@@ -107,7 +101,6 @@ Digiham::Phase* VoicePhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wri
     if (isSyncDue()) {
         if (hamming_distance(data_frame, (uint8_t*) voice_sync, SYNC_SIZE) > 1) {
             if (--syncCount < 0) {
-                std::cerr << "too many missed syncs, ending voice mode\n";
                 ((MetaCollector*) meta)->reset();
                 return new SyncPhase();
             }
@@ -241,11 +234,9 @@ void VoicePhase::parseFrameData() {
 void VoicePhase::parseNMEAData(const std::string& input) {
     size_t checksum_pos = input.find_last_of("*");
     if (checksum_pos == std::string::npos) {
-        std::cerr << "no NMEA checksum available\n";
         return;
     }
     if (checksum_pos + 2 > input.length()) {
-        std::cerr << "NMEA checksum incomplete\n";
         return;
     }
 
@@ -263,7 +254,6 @@ void VoicePhase::parseNMEAData(const std::string& input) {
     ss >> to_check;
 
     if (checksum != to_check) {
-        std::cerr << "NMEA checksum failure\n";
         return;
     }
 

@@ -19,7 +19,6 @@ Digiham::Phase* SyncPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Writ
     uint8_t* potential_sync = data->getReadPointer();
 
     if (hamming_distance(potential_sync, (uint8_t*) frameSync, SYNC_SIZE) <= 2) {
-        std::cerr << "found a frame sync\n";
         //data->advance(SYNC_SIZE);
         return new FramedPhase();
     }
@@ -48,7 +47,6 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
         if (++syncCount > 6) syncCount = 6;
     } else {
         if (--syncCount < 0) {
-            std::cerr << "lost sync\n";
             ((MetaCollector*) meta)->reset();
             return new SyncPhase();
         }
@@ -152,7 +150,6 @@ Digiham::Phase* FramedPhase::process(Csdr::Reader<unsigned char>* data, Csdr::Wr
                 if (facch1 != nullptr) {
                     switch (facch1->getMessageType()) {
                         case NXDN_MESSAGE_TYPE_TX_RELEASE:
-                            std::cerr << "FAACH1 signals TX release\n";
                             ((MetaCollector*) meta)->reset();
                             delete facch1;
                             return new SyncPhase();
