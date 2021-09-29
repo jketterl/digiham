@@ -19,19 +19,24 @@ namespace Digiham {
 
         class MbeSynthesizer: public Csdr::Module<unsigned char, short> {
             public:
-                explicit MbeSynthesizer(Mode* mode);
-                MbeSynthesizer(std::string path, Mode* mode);
-                MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode);
+                explicit MbeSynthesizer();
+                explicit MbeSynthesizer(const std::string& path);
+                MbeSynthesizer(const std::string& host, unsigned short port);
                 ~MbeSynthesizer() override;
+                void setMode(Mode* mode);
+                bool hasAmbeCodec();
                 bool canProcess() override;
                 void process() override;
             private:
-                void init();
+                explicit MbeSynthesizer(int sock);
+                static int connect(const std::string& path);
+                static int connect(const std::string& host, unsigned short port);
                 void handshake();
+                void request();
                 void readLoop();
                 void setDynamicMode(Mode* mode);
                 void waitForResponse();
-                Mode* mode;
+                Mode* mode = nullptr;
                 bool dynamicMode = false;
                 Mode* currentMode = nullptr;
                 int sock;

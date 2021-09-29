@@ -6,14 +6,13 @@
 #include <codecserver/proto/request.pb.h>
 #include <codecserver/proto/response.pb.h>
 #include <codecserver/proto/data.pb.h>
+#include <codecserver/proto/check.pb.h>
 #include "mbe_synthesizer.hpp"
 
 using namespace Digiham::Mbe;
 using namespace CodecServer::proto;
 
-MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mode* mode):
-    mode(mode)
-{
+int MbeSynthesizer::connect(const std::string &host, unsigned short port) {
     // IPv6 / IPv4 socket
     struct addrinfo hints;
     struct addrinfo* result;
@@ -37,13 +36,14 @@ MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mod
     }
 
     struct addrinfo* rp;
+    int sock;
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if (sock == -1) {
             continue;
         }
 
-        if (connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
+        if (::connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
             break;                  /* Success */
         }
 
@@ -56,12 +56,14 @@ MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port, Mod
         throw ConnectionError("could not connect to to server");
     }
 
-    init();
+    return sock;
 }
 
-MbeSynthesizer::MbeSynthesizer(std::string path, Mode* mode):
-    mode(mode)
-{
+MbeSynthesizer::MbeSynthesizer(const std::string& host, unsigned short port):
+    MbeSynthesizer(MbeSynthesizer::connect(host, port))
+{}
+
+int MbeSynthesizer::connect(const std::string &path) {
     // unix domain sockets connection
     sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
@@ -69,24 +71,35 @@ MbeSynthesizer::MbeSynthesizer(std::string path, Mode* mode):
     const char* socket_path = "/tmp/codecserver.sock";
     strncpy(addr.sun_path, socket_path, strlen(socket_path));
 
-    sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
         throw ConnectionError("socket error: " + std::string(strerror(errno)));
     }
 
-    if (connect(sock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
+    if (::connect(sock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
         throw ConnectionError("connection failure: " + std::string(strerror(errno)));
     }
 
-    init();
+    return sock;
 }
 
-MbeSynthesizer::MbeSynthesizer(Mode* mode): MbeSynthesizer("/tmp/codecserver.sock", mode) {}
+MbeSynthesizer::MbeSynthesizer(const std::string& path):
+    MbeSynthesizer(MbeSynthesizer::connect(path))
+{}
 
-void MbeSynthesizer::init() {
-    connection = new CodecServer::Connection(sock);
-    dynamicMode = dynamic_cast<DynamicMode*>(mode) != nullptr;
+MbeSynthesizer::MbeSynthesizer(): MbeSynthesizer("/tmp/codecserver.sock") {}
+
+MbeSynthesizer::MbeSynthesizer(int sock):
+    sock(sock),
+    connection(new CodecServer::Connection(sock))
+{
     handshake();
+}
+
+void MbeSynthesizer::setMode(Mode* mode) {
+    this->mode = mode;
+    dynamicMode = dynamic_cast<DynamicMode*>(mode) != nullptr;
+    request();
     readerThread = new std::thread([this] () { readLoop(); });
 }
 
@@ -131,7 +144,33 @@ void MbeSynthesizer::handshake() {
     if (!connection->isCompatible(handshake.serverversion())) {
         throw ConnectionError("server version mismatch");
     }
+}
 
+bool MbeSynthesizer::hasAmbeCodec() {
+    Check check;
+    check.set_codec("ambe");
+    connection->sendMessage(&check);
+
+    google::protobuf::Any* message = connection->receiveMessage();
+
+    if (message == nullptr) {
+        delete message;
+        throw ConnectionError("no response to codec check");
+    }
+
+    if (!message->Is<Response>()) {
+        delete message;
+        throw ConnectionError("response error");
+    }
+
+    Response response;
+    message->UnpackTo(&response);
+    delete message;
+
+    return response.result() == Response_Status_OK;
+}
+
+void MbeSynthesizer::request() {
     Request request;
     request.set_codec("ambe");
     Settings* settings = request.mutable_settings();
@@ -153,7 +192,7 @@ void MbeSynthesizer::handshake() {
     }
     connection->sendMessage(&request);
 
-    message = connection->receiveMessage();
+    google::protobuf::Any* message = connection->receiveMessage();
 
     if (message == nullptr) {
         throw ConnectionError("no response to codec request");
