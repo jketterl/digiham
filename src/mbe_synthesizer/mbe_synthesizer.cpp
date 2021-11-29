@@ -43,6 +43,12 @@ int MbeSynthesizer::connect(const std::string &host, unsigned short port) {
             continue;
         }
 
+        struct timeval timeout {
+            .tv_sec = 5,
+            .tv_usec = 0
+        };
+        setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
         if (::connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
             break;                  /* Success */
         }
@@ -75,6 +81,12 @@ int MbeSynthesizer::connect(const std::string &path) {
     if (sock == -1) {
         throw ConnectionError("socket error: " + std::string(strerror(errno)));
     }
+
+    struct timeval timeout {
+        .tv_sec = 5,
+        .tv_usec = 0
+    };
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
     if (::connect(sock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
         throw ConnectionError("connection failure: " + std::string(strerror(errno)));
