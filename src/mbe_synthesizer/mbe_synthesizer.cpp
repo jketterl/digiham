@@ -140,11 +140,11 @@ void MbeSynthesizer::handshake() {
     google::protobuf::Any* message = connection->receiveMessage();
 
     if (message == nullptr) {
-        throw ConnectionError("no handshake");
+        throw ProtocolError("no handshake");
     }
 
     if (!message->Is<Handshake>()) {
-        throw ConnectionError("unexpected message");
+        throw ProtocolError("unexpected message");
     }
 
     Handshake handshake;
@@ -152,7 +152,7 @@ void MbeSynthesizer::handshake() {
     delete message;
 
     if (!connection->isCompatible(handshake.serverversion())) {
-        throw ConnectionError("server version mismatch");
+        throw VersionError("server version mismatch");
     }
 }
 
@@ -165,12 +165,12 @@ bool MbeSynthesizer::hasAmbeCodec() {
 
     if (message == nullptr) {
         delete message;
-        throw ConnectionError("no response to codec check");
+        throw ProtocolError("no response to codec check");
     }
 
     if (!message->Is<Response>()) {
         delete message;
-        throw ConnectionError("response error");
+        throw ProtocolError("response error");
     }
 
     Response response;
@@ -205,11 +205,11 @@ void MbeSynthesizer::request() {
     google::protobuf::Any* message = connection->receiveMessage();
 
     if (message == nullptr) {
-        throw ConnectionError("no response to codec request");
+        throw ProtocolError("no response to codec request");
     }
 
     if (!message->Is<Response>()) {
-        throw ConnectionError("response error");
+        throw ProtocolError("response error");
     }
 
     Response response;
@@ -217,11 +217,11 @@ void MbeSynthesizer::request() {
     delete message;
 
     if (response.result() != Response_Status_OK) {
-        throw ConnectionError("server replied with error, message: " + response.message());
+        throw ServerError(response.message());
     }
 
     if (!response.has_framing()) {
-        throw ConnectionError("framing info is not available");
+        throw FramingError("framing info is not available");
     }
 
     framing = response.framing();

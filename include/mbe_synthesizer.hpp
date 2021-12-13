@@ -12,9 +12,34 @@ namespace Digiham {
 
     namespace Mbe {
 
-        class ConnectionError: public std::runtime_error {
+        class Error: public std::runtime_error {
             public:
-                explicit ConnectionError(const std::string& reason): std::runtime_error(reason) {}
+                explicit Error(const std::string& reason): std::runtime_error(reason) {}
+        };
+
+        class ConnectionError: public Error {
+            public:
+                explicit ConnectionError(const std::string& reason): Error(reason) {}
+        };
+
+        class ProtocolError: public Error {
+            public:
+                explicit ProtocolError(const std::string& reason): Error(reason) {}
+        };
+
+        class VersionError: public Error {
+            public:
+                explicit VersionError(const std::string& reason): Error(reason) {}
+        };
+
+        class ServerError: public Error {
+            public:
+                explicit ServerError(const std::string& reason): Error(reason) {}
+        };
+
+        class FramingError: public Error {
+            public:
+                explicit FramingError(const std::string& reason): Error(reason) {}
         };
 
         class MbeSynthesizer: public Csdr::Module<unsigned char, short> {
