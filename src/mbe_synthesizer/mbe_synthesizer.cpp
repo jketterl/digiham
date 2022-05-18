@@ -2,6 +2,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <cstring>
+#include <chrono>
 #include <codecserver/proto/handshake.pb.h>
 #include <codecserver/proto/request.pb.h>
 #include <codecserver/proto/response.pb.h>
@@ -344,5 +345,8 @@ void MbeSynthesizer::setDynamicMode(Mode *mode) {
 
 void MbeSynthesizer::waitForResponse() {
     std::unique_lock<std::mutex> lk(framingMutex);
-    framingCV.wait(lk);
+    auto res = framingCV.wait_for(lk, std::chrono::seconds(10));
+    if (res == std::cv_status::timeout) {
+        throw FramingError("timeout waiting for framing information");
+    }
 }
