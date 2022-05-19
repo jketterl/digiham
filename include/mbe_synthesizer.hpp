@@ -60,7 +60,6 @@ namespace Digiham {
                 void request();
                 void readLoop();
                 void setDynamicMode(Mode* mode);
-                void waitForResponse();
                 Mode* mode = nullptr;
                 bool dynamicMode = false;
                 Mode* currentMode = nullptr;

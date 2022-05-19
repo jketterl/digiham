@@ -336,17 +336,18 @@ void MbeSynthesizer::setDynamicMode(Mode *mode) {
     } else if ((cmode = dynamic_cast<ControlWordMode*>(mode))) {
         (*settings->mutable_args())["ratep"] = cmode->getCwdsAsString();
     }
+
+    // get the lock before sending the request
+    // this way we avoid parsing the response before we reach the wait()
+    std::unique_lock<std::mutex> lk(framingMutex);
+
     connection->sendMessage(&reneg);
-    waitForResponse();
+
+    if (framingCV.wait_for(lk, std::chrono::seconds(10)) == std::cv_status::timeout) {
+        throw FramingError("timeout waiting for framing information");
+    }
+
     auto old = currentMode;
     currentMode = mode;
     delete old;
-}
-
-void MbeSynthesizer::waitForResponse() {
-    std::unique_lock<std::mutex> lk(framingMutex);
-    auto res = framingCV.wait_for(lk, std::chrono::seconds(10));
-    if (res == std::cv_status::timeout) {
-        throw FramingError("timeout waiting for framing information");
-    }
 }
