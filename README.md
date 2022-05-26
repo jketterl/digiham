@@ -10,8 +10,17 @@ decodes the available information, which is then displayed on the receiver's web
 
 ## Requirements
 
+Please make sure you install the following dependencies before compiling digiham:
+
+ * [csdr](https://github.com/jketterl/csdr) (version 0.18 or later)
+ * [codecserver](https://github.com/jketterl/codecserver)
+ * [ICU](https://icu.unicode.org/) (for Debian, install `libicu-dev`)
+
+
+## About the AMBE codec
+
 Most digital voice modes in the ham radio universe right now use some version of the AMBE digital voice codec. In order
-to decode them, you will need to setup the correspoding decoding infrastructor.
+to decode them, you will need to setup the correspoding decoding infrastructure.
 
 This project comes with mbe_synthesizer that can send the received audio data to a
 [codecserver](https://github.com/jketterl/codecserver) instance for decoding.
