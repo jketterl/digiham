@@ -12,9 +12,9 @@ decodes the available information, which is then displayed on the receiver's web
 
 Please make sure you install the following dependencies before compiling digiham:
 
- * [csdr](https://github.com/jketterl/csdr) (version 0.18 or later)
- * [codecserver](https://github.com/jketterl/codecserver)
- * [ICU](https://icu.unicode.org/) (for Debian, install `libicu-dev`)
+- [csdr](https://github.com/jketterl/csdr) (version 0.18 or later)
+- [codecserver](https://github.com/jketterl/codecserver)
+- [ICU](https://icu.unicode.org/) (for Debian, install `libicu-dev`)
 
 
 ## About the AMBE codec
