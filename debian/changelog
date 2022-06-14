@@ -1,11 +1,11 @@
-digiham (0.6.0) UNRELEASED; urgency=low
+digiham (0.6.0) bullseye jammy; urgency=low
 
   * rewrite all available decoders as csdr modules, making them available in
     libdigiham
   * implement parsing of DMR talker alias
   * implement parsing of DMR in-band GPS coordinates
 
- -- Jakob Ketterl <jakob.ketterl@gmx.de>  Mon, 02 Aug 2021 19:43:00 +0000
+ -- Jakob Ketterl <jakob.ketterl@gmx.de>  Tue, 14 Jun 2022 21:45:00 +0000
 
 digiham (0.5.0) buster hirsute; urgency=low
 
