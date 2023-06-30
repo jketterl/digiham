@@ -12,7 +12,7 @@ fi
 # this gives us an narrow-fm demodulated audio signal at 48kHz
 rtl_fm -f $1 -M fm -s 48000 | \
 # the toolchain needs 32bit float input, so we need to convert it
-csdr convert_s16_f | \
+csdr convert -i s16 -o float | \
 # decode the audio and get the raw bitsream from the signal
 # inverted
 # FSK with 1200 baud, so 40 samples per symbol

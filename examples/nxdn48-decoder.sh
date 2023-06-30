@@ -12,14 +12,14 @@ fi
 # this gives us an narrow-fm demodulated audio signal at 48kHz
 rtl_fm -f $1 -M fm -s 48000 | \
 # the toolchain needs 32bit float input, so we need to convert it
-csdr convert_s16_f | \
+csdr convert -i s16 -o float | \
 # block out any dc offset that may be present due to oscillator offset
-csdr++ dcblock | \
+csdr dcblock | \
 # raised root cosine filter as specified by the NXDN spec
 rrc_filter -n | \
 # decode the audio and get the raw bitsream from the signal
 gfsk_demodulator -s 20 | \
-# this implaments the dmr protocol layer
+# this implements the NXDN protocol layer
 nxdn_decoder | \
 # decode the MBE voice codec
 mbe_synthesizer | \

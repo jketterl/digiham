@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# This is an example DMR decoding pipeline to show the basic usage of the tools in this project.
+# This is an example YSF decoding pipeline to show the basic usage of the tools in this project.
 # The individual steps are documented below.
 
 if [ $# -eq 0 ]; then
@@ -19,10 +19,10 @@ csdr dcblock | \
 rrc_filter | \
 # decode the audio and get the raw bitsream from the signal
 gfsk_demodulator | \
-# this implements the DMR protocol layer
-dmr_decoder | \
+# this implements the YSF protocol layer
+ysf_decoder | \
 # decode the MBE voice codec
-mbe_synthesizer | \
+mbe_synthesizer --yaesu | \
 # filter out unwanted audio frequencies
 digitalvoice_filter | \
 # play the result through the nearest soundcard
