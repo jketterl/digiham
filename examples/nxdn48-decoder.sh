@@ -14,7 +14,7 @@ rtl_fm -f $1 -M fm -s 48000 | \
 # the toolchain needs 32bit float input, so we need to convert it
 csdr convert_s16_f | \
 # block out any dc offset that may be present due to oscillator offset
-dc_block | \
+csdr++ dcblock | \
 # raised root cosine filter as specified by the NXDN spec
 rrc_filter -n | \
 # decode the audio and get the raw bitsream from the signal
