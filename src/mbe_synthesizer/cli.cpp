@@ -49,8 +49,8 @@ int Cli::main(int argc, char** argv) {
 
     std::cerr << "received handshake from " << handshake.servername() << "\n";
 
-    if (!connection->isCompatible(handshake.serverversion())) {
-        std::cerr << "server version mismatch\n";
+    if (!connection->isCompatible(handshake.protocolversion())) {
+        std::cerr << "protocol version mismatch\n";
         delete connection;
         return 1;
     }

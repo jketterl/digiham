@@ -152,8 +152,8 @@ void MbeSynthesizer::handshake() {
     message->UnpackTo(&handshake);
     delete message;
 
-    if (!connection->isCompatible(handshake.serverversion())) {
-        throw VersionError("server version mismatch");
+    if (!connection->isCompatible(handshake.protocolversion())) {
+        throw VersionError("server protocol version is incompatible");
     }
 }
 
