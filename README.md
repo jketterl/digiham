@@ -27,6 +27,10 @@ This project comes with mbe_synthesizer that can send the received audio data to
 
 ## Installation
 
+The OpenWebRX project is hosting digiham packages in their repositories. Please click the respective link for [Debian](https://www.openwebrx.de/download/debian.php) or [Ubuntu](https://www.openwebrx.de/download/ubuntu.php).
+
+## Compiling from source
+
 This project comes with a cmake build. It is recommended to build in a separate directory.
 
 ```
