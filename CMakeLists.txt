@@ -4,7 +4,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-project (digiham VERSION 0.6.1)
+project (digiham VERSION 0.6.2)
 add_definitions(-DVERSION="${PROJECT_VERSION}")
 
 enable_language(CXX)
