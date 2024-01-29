@@ -286,7 +286,7 @@ void MbeSynthesizer::readLoop() {
                     message->UnpackTo(data);
                     std::string output = data->data();
                     if (writer->writeable() * sizeof(short) < output.length()) {
-                        std::cerr << "dropping speech data due to writer overflow";
+                        std::cerr << "dropping speech data due to writer overflow\n";
                     } else {
                         std::memcpy(writer->getWritePointer(), output.data(), output.length());
                         writer->advance(output.length() / 2);
