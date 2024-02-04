@@ -119,15 +119,15 @@ void MbeSynthesizer::setMode(Mode* mode) {
 MbeSynthesizer::~MbeSynthesizer() {
     run = false;
     if (connection != nullptr) {
-        std::unique_lock<std::mutex> lck(receiveMutex);
-        delete connection;
-        connection = nullptr;
+        connection->close();
     }
     if (readerThread != nullptr) {
         readerThread->join();
         delete readerThread;
         readerThread = nullptr;
     }
+    delete connection;
+    connection = nullptr;
     // avoid double delete by checking for identity first
     if (currentMode != mode) {
         delete currentMode;
@@ -249,68 +249,39 @@ void MbeSynthesizer::process() {
 }
 
 void MbeSynthesizer::readLoop() {
-    fd_set read_fds;
-    struct timeval tv = {
-        .tv_sec = 1,
-        .tv_usec = 0
-    };
-    int rc;
-    int nfds = sock + 1;
-
     while (run) {
-        FD_ZERO(&read_fds);
-        FD_SET(sock, &read_fds);
-        tv.tv_sec = 0;
-        tv.tv_usec = 1E5;
-
-        rc = select(nfds, &read_fds, NULL, NULL, &tv);
-        if (rc == -1) {
-            std::cerr << "select() error\n";
-            run = false;
-        } else if (rc) {
-            if (FD_ISSET(sock, &read_fds)) {
-                google::protobuf::Any* message = nullptr;
-
-                {
-                    // need to synchronize this with the shutdown since if the connection is closed
-                    // while we receive we hit a double free bug in protobuf
-                    std::unique_lock<std::mutex> lck(receiveMutex);
-                    if (connection != nullptr) {
-                        message = connection->receiveMessage();
-                    }
-                    if (message == nullptr) break;
-                }
-
-                if (message->Is<SpeechData>()) {
-                    SpeechData *data = new SpeechData();
-                    message->UnpackTo(data);
-                    std::string output = data->data();
-                    if (writer->writeable() * sizeof(short) < output.length()) {
-                        std::cerr << "dropping speech data due to writer overflow\n";
-                    } else {
-                        std::memcpy(writer->getWritePointer(), output.data(), output.length());
-                        writer->advance(output.length() / 2);
-                    }
-                    delete data;
-                } else if (message->Is<Response>()) {
-                    Response *response = new Response();
-                    message->UnpackTo(response);
-                    if (response->has_framing()) {
-                        framing = response->framing();
-                    }
-                    delete response;
-
-                    std::unique_lock<std::mutex> lk(framingMutex);
-                    framingCV.notify_all();
-                } else {
-                    std::cerr << "received unexpected message type\n";
-                }
-
-                delete message;
-            }
-        //} else {
-            // no data, just timeout.
+        google::protobuf::Any* message = nullptr;
+        if (connection != nullptr) {
+            message = connection->receiveMessage();
         }
+        if (message == nullptr) break;
+
+        if (message->Is<SpeechData>()) {
+            SpeechData *data = new SpeechData();
+            message->UnpackTo(data);
+            std::string output = data->data();
+            if (writer->writeable() * sizeof(short) < output.length()) {
+                std::cerr << "dropping speech data due to writer overflow\n";
+            } else {
+                std::memcpy(writer->getWritePointer(), output.data(), output.length());
+                writer->advance(output.length() / 2);
+            }
+            delete data;
+        } else if (message->Is<Response>()) {
+            Response *response = new Response();
+            message->UnpackTo(response);
+            if (response->has_framing()) {
+                framing = response->framing();
+            }
+            delete response;
+
+            std::unique_lock<std::mutex> lk(framingMutex);
+            framingCV.notify_all();
+        } else {
+            std::cerr << "received unexpected message type\n";
+        }
+
+        delete message;
     }
 }
 

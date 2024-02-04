@@ -68,7 +68,6 @@ namespace Digiham {
                 CodecServer::proto::FramingHint framing;
                 std::thread* readerThread = nullptr;
                 bool run = true;
-                std::mutex receiveMutex;
                 std::condition_variable framingCV;
                 std::mutex framingMutex;
         };
